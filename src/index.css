@@ -1,0 +1,94 @@
+/* src/index.css (УЛУЧШЕННАЯ ВЕРСИЯ) */
+
+@font-face {
+  font-family: 'Amatic SC';
+  src: url('/fonts/AmaticSC-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Marck Script';
+  src: url('/fonts/MarckScript-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --tg-bg-color: var(--tg-theme-bg-color, #282420); /* Сделаем чуть теплее */
+  --tg-text-color: var(--tg-theme-text-color, #e0e0e0); /* Чуть мягче белого */
+  --tg-hint-color: var(--tg-theme-hint-color, #a0a0a0);
+  --tg-link-color: var(--tg-theme-link-color, #d4b254);
+  --tg-button-color: var(--tg-theme-button-color, #d4b254);
+  --tg-button-text-color: var(--tg-theme-button-text-color, #282420);
+
+  /* Шрифты */
+  --font-header: 'Amatic SC', sans-serif; /* Для больших заголовков (H1) */
+  --font-title: 'Marck Script', cursive;  /* Для заголовков карточек (H3) */
+  --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* Системный шрифт для текста */
+
+  /* Цвета */
+  --accent-color: #d4b254; /* Золотой */
+  --text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7); /* Тень для текста */
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  background-color: var(--tg-bg-color);
+  background-image: url('./assets/paper-texture.jpg');
+  background-blend-mode: multiply;
+  color: var(--tg-text-color);
+  
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+main {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 15px;
+}
+
+/* Стили для заголовков */
+h1 {
+  font-family: var(--font-header);
+  color: var(--accent-color);
+  text-align: center;
+  letter-spacing: 2px;
+  font-size: 3.2em;
+  text-shadow: var(--text-shadow);
+  margin-bottom: 20px;
+}
+
+h3 {
+  font-family: var(--font-title);
+  color: white;
+  text-shadow: var(--text-shadow);
+}
+
+/* Стили для обычного текста и ссылок */
+p {
+  line-height: 1.6;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Легкая тень для всего текста */
+}
+
+a {
+  color: var(--tg-link-color);
+  text-decoration: none;
+}

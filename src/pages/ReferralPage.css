@@ -1,0 +1,76 @@
+/* src/pages/ReferralPage.css */
+
+.referral-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px;
+}
+
+.referral-description {
+  max-width: 400px;
+  margin-bottom: 25px;
+  color: var(--tg-hint-color);
+}
+
+/* --- СТИЛИ ДЛЯ QR-КОДА --- */
+.qr-code-wrapper {
+  padding: 15px;
+  background-color: #ffffff; /* Белый фон, чтобы код всегда был читаемым */
+  border-radius: 8px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+/* -------------------------- */
+
+.referral-link-box {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 178, 84, 0.3);
+  width: 100%;
+  max-width: 450px;
+  box-sizing: border-box;
+}
+
+.link-label {
+  margin: 0 0 10px;
+  font-size: 0.9em;
+  color: var(--tg-hint-color);
+}
+
+.link-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.link-wrapper input[type="text"] {
+  flex-grow: 1;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid var(--accent-color);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: var(--tg-text-color);
+  font-family: monospace;
+  font-size: 0.9em;
+  text-align: center;
+}
+
+.link-wrapper button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  background-color: var(--tg-button-color);
+  color: var(--tg-button-text-color);
+  font-family: var(--font-header);
+  font-size: 1.2em;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.link-wrapper button:hover {
+  opacity: 0.8;
+}

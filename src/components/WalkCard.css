@@ -1,0 +1,60 @@
+/* src/components/WalkCard.css */
+.walk-card-link {
+  text-decoration: none;
+  color: inherit;
+}
+.walk-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(212, 178, 84, 0.5); /* Полупрозрачная рамка */
+  border-radius: 8px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.walk-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+}
+.walk-card-content {
+  padding: 20px;
+}
+.walk-card-city {
+  font-size: 0.9em;
+  color: var(--tg-hint-color);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.walk-card-title {
+  font-family: var(--font-title); /* Используем шрифт для заголовков */
+  font-size: 2.2em; /* Увеличим */
+  margin: 5px 0 15px;
+  line-height: 1.2;
+}
+.walk-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+}
+.walk-card-price {
+  font-family: var(--font-header); /* Используем крупный шрифт */
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--accent-color);
+  text-shadow: var(--text-shadow);
+}
+.walk-card-details-text {
+  background-color: var(--tg-button-color);
+  color: var(--tg-button-text-color);
+  border-radius: 5px;
+  padding: 10px 18px;
+  font-family: var(--font-header); /* Используем крупный шрифт */
+  font-size: 1.5em;
+  letter-spacing: 1px;
+  transition: background-color 0.2s;
+}
+.walk-card:hover .walk-card-details-text {
+  background-color: #f0c96c;
+}
