@@ -8,7 +8,7 @@ const path = require('path');     // Модуль для работы с пут�
 // --- Константы ---
 const aмoSubdomain = 'sergeiavetsyuk';
 const clientId = 'f75ce4cb-c3b9-48f9-99b7-25cc5ac1b0df';
-const clientSecret = '...'; // <<<--- ВСТАВЬТЕ СЮДА ВАШ СЕКРЕТНЫЙ КЛЮЧ
+const clientSecret = 'FQRF0skZhtGJJyhMveXskAagAlRNJDcrNEXWIHujv1Px08uQES8NSNwNKrVcazua'; // <<<--- ВСТАВЬТЕ СЮДА ВАШ СЕКРЕТНЫЙ КЛЮЧ
 const tokensFilePath = path.join(__dirname, 'tokens.json'); // Путь к нашему файлу с токенами
 
 // --- Переменные для хранения токенов в памяти ---
