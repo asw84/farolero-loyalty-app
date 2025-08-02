@@ -1,101 +1,176 @@
 // backend/amocrm/apiClient.js
-// ФИНАЛЬНАЯ АВТОНОМНАЯ ВЕРСИЯ С СОХРАНЕНИЕМ ТОКЕНОВ
+// ПОЛНАЯ ВЕРСИЯ С ФУНКЦИЕЙ СОЗДАНИЯ СДЕЛОК (LEADS)
 
 const axios = require('axios');
-const fs = require('fs').promises; // Используем асинхронный модуль для работы с файлами
-const path = require('path');     // Модуль для работы с путями
+const fs = require('fs');
+const path = require('path');
 
-// --- Константы ---
-const aмoSubdomain = 'sergeiavetsyuk';
-const clientId = 'f75ce4cb-c3b9-48f9-99b7-25cc5ac1b0df';
-const clientSecret = 'FQRF0skZhtGJJyhMveXskAagAlRNJDcrNEXWIHujv1Px08uQES8NSNwNKrVcazua'; // <<<--- ВСТАВЬТЕ СЮДА ВАШ СЕКРЕТНЫЙ КЛЮЧ
-const tokensFilePath = path.join(__dirname, 'tokens.json'); // Путь к нашему файлу с токенами
+const CONFIG_PATH = path.join(__dirname, 'amocrm.json');
+const TOKENS_PATH = path.join(__dirname, '..', 'tokens.json');
 
-// --- Переменные для хранения токенов в памяти ---
-let accessToken = null;
-let refreshToken = null;
+if (!fs.existsSync(CONFIG_PATH)) {
+    throw new Error('Файл конфигурации amocrm.json не найден!');
+}
+const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
 
-// --- Функция для чтения токенов из файла ---
-const readTokens = async () => {
-    try {
-        const data = await fs.readFile(tokensFilePath, 'utf-8');
-        const tokens = JSON.parse(data);
-        accessToken = tokens.accessToken;
-        refreshToken = tokens.refreshToken;
-    } catch (error) {
-        console.error('[Tokens] Не удалось прочитать файл с токенами. Возможно, его нужно создать.', error.message);
-    }
-};
+const TELEGRAM_ID_FIELD_ID = 986895;
+const POINTS_FIELD_ID = 986893;
 
-// --- Функция для записи токенов в файл ---
-const writeTokens = async (tokens) => {
-    try {
-        accessToken = tokens.access_token;
-        refreshToken = tokens.refresh_token;
-        await fs.writeFile(tokensFilePath, JSON.stringify({
-            accessToken: accessToken,
-            refreshToken: refreshToken,
-        }, null, 2));
-        console.log('[Tokens] ✅ Токены успешно сохранены в файл.');
-    } catch (error) {
-        console.error('[Tokens] ❌ Не удалось записать токены в файл.', error.message);
-    }
-};
-
-const apiClient = axios.create({
-    baseURL: `https://${aмoSubdomain}.amocrm.ru/api/v4`,
+let apiClient = axios.create({
+    baseURL: config.base_url
 });
 
-// --- Функция для обновления токенов ---
-const getAccessToken = async () => {
-    if (!refreshToken) {
-        await readTokens();
-        if (!refreshToken) {
-            throw new Error('Отсутствует Refresh Token. Необходимо пройти авторизацию заново.');
+function getTokens() {
+    if (fs.existsSync(TOKENS_PATH)) {
+        const fileContent = fs.readFileSync(TOKENS_PATH, 'utf-8');
+        // Добавим проверку на пустой файл
+        if (fileContent) {
+            return JSON.parse(fileContent);
         }
     }
-    
+    return null;
+}
+
+function saveTokens(tokens) {
+    // Добавляем время создания токена для точного расчета срока жизни
+    if (!tokens.created_at) {
+        tokens.created_at = Date.now() / 1000;
+    }
+    fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
+}
+
+async function getInitialToken() {
     try {
-        console.log('[AmoCRM] Попытка обновить токен доступа...');
-        const response = await axios.post(`https://${aмoSubdomain}.amocrm.ru/oauth2/access_token`, {
-            client_id: clientId,
-            client_secret: clientSecret,
-            grant_type: 'refresh_token',
-            refresh_token: refreshToken,
+        console.log('[AmoCRM] Попытка получить первичный токен по коду авторизации...');
+        const response = await apiClient.post('/oauth2/access_token', {
+            client_id: config.client_id,
+            client_secret: config.client_secret,
+            grant_type: 'authorization_code',
+            code: config.auth_code,
+            redirect_uri: config.redirect_uri
         });
-        
-        // СОХРАНЯЕМ НОВЫЕ ТОКЕНЫ В ФАЙЛ
-        await writeTokens(response.data);
-        
-        console.log('[AmoCRM] ✅ Токен доступа успешно обновлен и сохранен!');
+        saveTokens(response.data);
+        console.log('[AmoCRM] ✅ Первичный токен успешно получен и сохранен.');
         return response.data.access_token;
     } catch (error) {
-        console.error('❌ Ошибка обновления токена:', error.response ? error.response.data : error.message);
-        throw new Error('Не удалось обновить токен доступа');
+        console.error('❌ [AmoCRM] Критическая ошибка при получении первичного токена:', error.response?.data || error.message);
+        throw error;
     }
-};
+}
 
-// --- Перехватчики (остаются почти без изменений) ---
-apiClient.interceptors.request.use(async (config) => {
-    if (!accessToken) {
-        accessToken = await getAccessToken();
+async function refreshToken(tokens) {
+    try {
+        console.log('[AmoCRM] Токен истек. Обновляю...');
+        const response = await apiClient.post('/oauth2/access_token', {
+            client_id: config.client_id,
+            client_secret: config.client_secret,
+            grant_type: 'refresh_token',
+            refresh_token: tokens.refresh_token,
+            redirect_uri: config.redirect_uri
+        });
+        saveTokens(response.data);
+        console.log('[AmoCRM] ✅ Токен успешно обновлен и сохранен.');
+        return response.data.access_token;
+    } catch (error) {
+        console.error('❌ [AmoCRM] Критическая ошибка при обновлении токена:', error.response?.data || error.message);
+        throw error;
     }
-    config.headers.Authorization = `Bearer ${accessToken}`;
-    return config;
+}
+
+apiClient.interceptors.request.use(async (axiosConfig) => {
+    let tokens = getTokens();
+    if (!tokens) {
+         console.warn('[AmoCRM] Токены не найдены. Необходимо выполнить авторизацию.');
+         return Promise.reject(new Error('Токены не найдены'));
+    }
+
+    const tokenExpiresAt = tokens.created_at + tokens.expires_in;
+    if (Date.now() / 1000 > tokenExpiresAt - 60) {
+        const newAccessToken = await refreshToken(tokens);
+        axiosConfig.headers['Authorization'] = `Bearer ${newAccessToken}`;
+    } else {
+        axiosConfig.headers['Authorization'] = `Bearer ${tokens.access_token}`;
+    }
+    return axiosConfig;
 });
 
-apiClient.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        const originalRequest = error.config;
-        if (error.response && error.response.status === 401 && !originalRequest._retry) {
-            console.log('[AmoCRM] Токен доступа просрочен. Обновляемся...');
-            originalRequest._retry = true;
-            accessToken = await getAccessToken();
-            return apiClient(originalRequest);
-        }
-        return Promise.reject(error);
-    }
-);
+async function findContactByTelegramId(telegramId) {
+    try {
+        console.log(`[AmoCRM] Ищу контакт с Telegram ID: ${telegramId}`);
+        const response = await apiClient.get('/api/v4/contacts', {
+            params: {
+                query: telegramId,
+            }
+        });
 
-module.exports = apiClient;
+        const contacts = response.data?._embedded?.contacts;
+        if (!contacts) {
+            console.log(`[AmoCRM] Контакты не найдены по запросу: ${telegramId}`);
+            return null;
+        }
+
+        const contact = contacts.find(c =>
+            c.custom_fields_values?.some(field =>
+                field.field_id === TELEGRAM_ID_FIELD_ID &&
+                field.values[0]?.value == telegramId
+            )
+        );
+
+        if (contact) {
+            console.log(`[AmoCRM] ✅ Найден контакт: ID ${contact.id}`);
+            return contact;
+        } else {
+            console.log(`[AmoCRM] Контакт с Telegram ID ${telegramId} не найден среди результатов.`);
+            return null;
+        }
+    } catch (error) {
+        console.error('❌ [AmoCRM] Ошибка при поиске контакта:', error.response?.data || error.message);
+        return null;
+    }
+}
+
+async function updateContact(contactId, fieldsToUpdate) {
+    try {
+        const custom_fields_values = Object.entries(fieldsToUpdate).map(([field_id, value]) => ({
+            field_id: Number(field_id),
+            values: [{ value: value }]
+        }));
+        console.log(`[AmoCRM] Обновляю контакт ${contactId} данными:`, JSON.stringify(custom_fields_values));
+        await apiClient.patch(`/api/v4/contacts/${contactId}`, { custom_fields_values });
+        return true;
+    } catch (error) {
+        console.error('❌ [AmoCRM] Ошибка при обновлении контакта:', error.response?.data || error.message);
+        return false;
+    }
+}
+
+// --- НОВАЯ ФУНКЦИЯ ДЛЯ СОЗДАНИЯ СДЕЛКИ ---
+async function createLead(name, { pipeline_id, status_id, contact_id, sale }) {
+    try {
+        console.log(`[AmoCRM] Создаю сделку "${name}" для контакта ${contact_id}`);
+        const leadData = {
+            name: name,
+            price: sale,
+            pipeline_id: pipeline_id,
+            status_id: status_id,
+            _embedded: {
+                contacts: [{ id: contact_id }]
+            }
+        };
+
+        // API AmoCRM ожидает массив сделок, даже если мы создаем одну
+        await apiClient.post('/api/v4/leads', [leadData]);
+        return true;
+    } catch (error) {
+        console.error('❌ [AmoCRM] Ошибка при создании сделки:', error.response?.data || error.message);
+        return false;
+    }
+}
+
+// --- ОБНОВЛЯЕМ ЭКСПОРТЫ ---
+module.exports = {
+    getInitialToken,
+    findContactByTelegramId,
+    updateContact,
+    createLead // <-- Добавляем новую функцию
+};

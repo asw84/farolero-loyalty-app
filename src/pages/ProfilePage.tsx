@@ -1,33 +1,13 @@
-// src/pages/ProfilePage.tsx
-import React, { useEffect, useState } from 'react';
-import { useTelegram } from '../hooks/useTelegram';
-import { fetchUserData } from '../api'; // Импортируем нашу функцию API
+// frontend/src/pages/ProfilePage.tsx
+// ИСПРАВЛЕННАЯ ВЕРСИЯ
 
-// Типизируем данные, которые ожидаем с бэкенда
-interface UserData {
-  points: number;
-  status: string;
-  referralLink: string;
-}
+import { useEffect, useState } from 'react';
+import { useUser } from '../context/UserContext'; // <-- Импортируем наш хук
 
 const ProfilePage = () => {
-  const { user } = useTelegram();
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchUserData(user.id)
-        .then(data => {
-          setUserData(data);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+  // --- Получаем все данные из общего хранилища ---
+  const { userData, loading } = useUser();
+  // ---------------------------------------------
 
   if (loading) {
     return <div>Загрузка профиля...</div>;
@@ -36,13 +16,13 @@ const ProfilePage = () => {
   return (
     <div>
       <h1>Профиль</h1>
-      <p>Имя: {user?.first_name}</p>
-      <p>ID: {user?.id}</p>
-      <p>Баллы: <strong>{userData?.points || 0}</strong></p>
-      <p>Статус: <strong>{userData?.status || 'Не определен'}</strong></p>
+      {/* Используем данные из userData */}
+      <p>ID: {userData.telegramId}</p>
+      <p>Баллы: <strong>{userData.points}</strong></p>
+      <p>Статус: <strong>{userData.status}</strong></p>
       <hr/>
       <h3>Ваша реферальная ссылка:</h3>
-      <p><code>{userData?.referralLink}</code></p>
+      <p><code>{userData.referralLink}</code></p>
     </div>
   );
 };

@@ -1,86 +1,50 @@
-// src/pages/ReferralPage.tsx
-// ВЕРСИЯ С QR-КОДОМ
+// frontend/src/pages/ReferralPage.tsx
+// ИСПРАВЛЕННАЯ ВЕРСИЯ С КОНТЕКСТОМ
 
-import { useEffect, useState } from 'react';
-import { QRCodeCanvas } from 'qrcode.react'; // <--- Импортируем компонент QR-кода
-import { useTelegram } from '../hooks/useTelegram';
-import { fetchUserData } from '../api';
-import './ReferralPage.css';
-
-interface UserData {
-  referralLink: string;
-}
+import { QRCodeSVG } from 'qrcode.react';
+import { useUser } from '../context/UserContext'; // <-- Импортируем наш хук
 
 const ReferralPage = () => {
-  const { user, tg } = useTelegram();
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  // --- Получаем все данные из общего хранилища ---
+  const { userData, loading } = useUser();
+  const { referralLink } = userData;
+  // ---------------------------------------------
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchUserData(user.id)
-        .then(data => setUserData(data))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const copyLink = () => {
-    if (userData?.referralLink) {
-      navigator.clipboard.writeText(userData.referralLink).then(() => {
-        tg.HapticFeedback.notificationOccurred('success');
-        tg.showPopup({
-          title: 'Готово!',
-          message: 'Ваша реферальная ссылка скопирована.',
-          buttons: [{ id: 'ok', type: 'ok', text: 'Отлично' }]
-        });
-      }).catch(err => {
-        console.error('Ошибка копирования в буфер обмена:', err);
-        tg.showAlert('Не удалось скопировать ссылку.');
-      });
+  const handleCopy = () => {
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink);
+      // Можно добавить уведомление об успешном копировании
+      alert('Ссылка скопирована!');
     }
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '20px' }}>Загрузка информации...</div>;
+    return <div>Загрузка...</div>;
   }
 
   return (
-    <div className="referral-container">
-      <h1>Пригласите друга</h1>
-      <p className="referral-description">
-        Поделитесь ссылкой или просто покажите QR-код. Когда друг совершит свою первую покупку, вы оба получите бонусные баллы!
-      </p>
+    <div style={{ textAlign: 'center', padding: '20px' }}>
+      <h2>Пригласите друга</h2>
+      <p>Поделитесь ссылкой или просто покажите QR-код. Когда друг совершит свою первую покупку, вы оба получите бонусные баллы!</p>
 
-      {/* --- БЛОК С QR-КОДОМ --- */}
-      {userData?.referralLink && (
-        <div className="qr-code-wrapper">
-          <QRCodeCanvas
-            value={userData.referralLink} // Ссылка для кодирования
-            size={180}                     // Размер в пикселях
-            bgColor={"#ffffff"}            // Цвет фона
-            fgColor={"#282420"}            // Цвет кода
-            level={"H"}                    // Уровень коррекции ошибок (L, M, Q, H)
-            includeMargin={true}           // Включить отступы
-          />
-        </div>
-      )}
-      {/* -------------------- */}
-      
-      <div className="referral-link-box">
-        <p className="link-label">Или скопируйте ссылку вручную:</p>
-        <div className="link-wrapper">
-          <input 
-            type="text" 
-            value={userData?.referralLink || 'Не удалось загрузить ссылку'} 
-            readOnly 
-            onClick={copyLink}
-          />
-          <button onClick={copyLink}>Копировать</button>
-        </div>
+      <div style={{ margin: '30px 0' }}>
+        {referralLink ? (
+          <QRCodeSVG value={referralLink} size={200} />
+        ) : (
+          <p>Не удалось загрузить QR-код</p>
+        )}
       </div>
       
+      <p>Или скопируйте ссылку вручную:</p>
+      
+      {referralLink ? (
+        <>
+          <code>{referralLink}</code>
+          <button onClick={handleCopy} style={{ marginLeft: '10px' }}>Копировать</button>
+        </>
+      ) : (
+        <p>Не удалось загрузить ссылку</p>
+      )}
     </div>
   );
 };
