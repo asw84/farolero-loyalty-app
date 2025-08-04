@@ -2,7 +2,7 @@
 // ПОЛНАЯ ВЕРСИЯ
 
 // ВАЖНО: Вставь сюда актуальный URL из твоего тоннеля для бэкенда
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = 'https://api.farolero.sergn8n.com';
 
 // Функция для загрузки данных пользователя с бэкенда
 export const fetchUserData = async (telegramId: number | string) => {
