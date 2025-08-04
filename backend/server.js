@@ -1,5 +1,5 @@
 // backend/server.js
-// ПОЛНАЯ ВЕРСИЯ СО ВСЕМИ ИЗМЕНЕНИЯМИ НА ДАННЫЙ МОМЕНТ
+// ПОЛНАЯ ВЕРСИЯ СО ВСЕМИ ИЗМЕНЕНИЯМИ И РЕАЛЬНЫМИ ID
 
 const express = require('express');
 const cors = require('cors');
@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const amocrmClient = require('./amocrm/apiClient');
 const qticketsService = require('./qtickets/qticketsService');
 const qticketsRestApiClient = require('./qtickets/restApiClient');
+const telegramService = require('./telegram/telegramService');
 
 const app = express();
 const PORT = 3001;
@@ -27,8 +28,8 @@ app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(cors({ origin: '*' }));
 
 // --- ID ПОЛЕЙ AMO ---
-const TELEGRAM_ID_FIELD_ID = 986895; // ID поля "Telegram ID"
-const POINTS_FIELD_ID = 986893;      // ID поля "Баллы"
+const TELEGRAM_ID_FIELD_ID = 986899;
+const POINTS_FIELD_ID = 986893;
 
 let qticketsEventsCache = [];
 
@@ -133,51 +134,35 @@ app.post('/api/order', async (req, res) => {
 });
 
 app.post('/api/webhook/qtickets', async (req, res) => {
-    // --- 1. ПРОВЕРКА ЦИФРОВОЙ ПОДПИСИ (ОБЯЗАТЕЛЬНО!) ---
+    console.log('[Webhook] Получено уведомление от Qtickets!');
     const signature = req.headers['x-signature'];
-    const expectedSignature = crypto
-        .createHmac('sha1', QTICKETS_WEBHOOK_SECRET)
-        .update(req.rawBody) // Используем "сырое" тело запроса, которое мы заботливо сохранили
-        .digest('hex');
-
+    const expectedSignature = crypto.createHmac('sha1', QTICKETS_WEBHOOK_SECRET).update(req.rawBody).digest('hex');
     if (signature !== expectedSignature) {
         console.error('[Webhook] ❌ Ошибка: Неверная подпись вебхука!');
         return res.status(403).send('Invalid signature.');
     }
-    console.log('[Webhook] ✅ Подпись вебхука верна.');
-
-    // --- 2. ПРОВЕРКА ТИПА СОБЫТИЯ ---
+    
     const eventType = req.headers['x-event-type'];
     if (eventType !== 'payed') {
         console.log(`[Webhook] Пропускаем событие "${eventType}", так как это не оплата.`);
         return res.status(200).send('OK. Event skipped.');
     }
-    console.log('[Webhook] Получено событие "Заказ оплачен". Обрабатываем...');
-    
-    // --- 3. ИЗВЛЕКАЕМ ДАННЫЕ И TELEGRAM ID (НАДЕЖНЫЙ СПОСОБ) ---
-    const orderData = req.body;
-    let telegramId = null;
 
-    // Приоритетный способ: из данных о пользователе
-    if (orderData.client?.details?.telegram_user?.id) {
-        telegramId = orderData.client.details.telegram_user.id;
-        console.log(`[Webhook] ID пользователя (${telegramId}) получен из данных telegram_user.`);
-    } 
-    // Запасной способ: из UTM-метки
-    else {
+    const orderData = req.body;
+    let telegramId = orderData.client?.details?.telegram_user?.id;
+    if (!telegramId) {
         const utmCampaign = orderData.utm?.find(tag => tag.campaign)?.campaign;
         if (utmCampaign && utmCampaign.startsWith('tgid_')) {
             telegramId = utmCampaign.replace('tgid_', '');
-            console.log(`[Webhook] ID пользователя (${telegramId}) получен из UTM-метки.`);
         }
     }
 
     if (!telegramId) {
-        console.error('[Webhook] ❌ Не удалось извлечь Telegram ID ни одним из способов.');
+        console.log('[Webhook] Не удалось извлечь Telegram ID.');
         return res.status(200).send('OK. No user ID found.');
     }
+    console.log(`[Webhook] Найден Telegram ID: ${telegramId}`);
 
-    // --- 4. ОСНОВНАЯ ЛОГИКА (остается почти без изменений) ---
     try {
         const contact = await amocrmClient.findContactByTelegramId(telegramId);
         if (!contact) {
@@ -185,28 +170,39 @@ app.post('/api/webhook/qtickets', async (req, res) => {
             return res.status(200).send('OK. User not found in CRM.');
         }
 
-        // Имитация отложенного начисления
-        const DELAY_IN_MILLISECONDS = 5 * 60 * 1000; // 5 минут для теста
-        setTimeout(async () => { /* ... код отложенной задачи ... */ }, DELAY_IN_MILLISECONDS);
-        
-        // Логика создания сделки
-        const PIPELINE_ID = 12345; // <-- ЗАМЕНИТЬ
-        const STATUS_ID_PAID = 67890; // <-- ЗАМЕНИТЬ
+        const DELAY_IN_MILLISECONDS = 5 * 60 * 1000;
+        console.log(`[Webhook] Планирую начисление 100 баллов для ${telegramId} через 5 минут.`);
+        setTimeout(async () => {
+            try {
+                console.log(`[DelayedTask] ВРЕМЯ ПРИШЛО! Начисляю 100 баллов для ${telegramId}.`);
+                const freshContact = await amocrmClient.findContactByTelegramId(telegramId);
+                if (freshContact) {
+                    const currentPoints = Number(freshContact.custom_fields_values?.find(f => f.field_id === POINTS_FIELD_ID)?.values[0]?.value || 0);
+                    const newTotalPoints = currentPoints + 100;
+                    await amocrmClient.updateContact(freshContact.id, { [POINTS_FIELD_ID]: newTotalPoints });
+                    console.log(`[DelayedTask] ✅ Баллы успешно начислены. Новый баланс: ${newTotalPoints}`);
+                }
+            } catch(e) { console.error(`[DelayedTask] ❌ Ошибка при отложенном начислении для ${telegramId}:`, e); }
+        }, DELAY_IN_MILLISECONDS);
+
+        const PIPELINE_ID = 857311;
+        const STATUS_ID_PAID = 17268313;
         const leadName = `Покупка билета через Mini App (${orderData.event?.name || ''})`;
         await amocrmClient.createLead(leadName, {
-            pipeline_id: PIPELINE_ID, status_id: STATUS_ID_PAID,
-            contact_id: contact.id, sale: orderData.price
+            pipeline_id: PIPELINE_ID,
+            status_id: STATUS_ID_PAID,
+            contact_id: contact.id,
+            sale: orderData.price
         });
-        console.log(`[Webhook] ✅ Новая сделка "${leadName}" создана.`);
+        console.log(`[Webhook] ✅ Новая сделка "${leadName}" создана в воронке ${PIPELINE_ID}, статус ${STATUS_ID_PAID}.`);
 
         res.status(200).send('OK');
     } catch (error) {
-        console.error('❌ [Webhook] Критическая ошибка при обработке:', error);
+        console.error('❌ [Webhook] Критическая ошибка:', error);
         res.status(500).send('Internal Server Error');
     }
 });
 
-// --- АДМИНКА И ЗАДАНИЯ ---
 app.get('/api/admin/stats', (req, res) => {
     console.log('[Admin] Запрошена статистика');
     res.json({ totalUsers: 150, ticketsSold: 75, pointsSpent: 12500 });
@@ -234,14 +230,27 @@ app.post('/api/admin/adjust-points', async (req, res) => {
     }
 });
 
-app.post('/api/social/check-subscription', (req, res) => {
+app.post('/api/social/check-subscription', async (req, res) => {
     const { telegramId, socialNetwork } = req.body;
     console.log(`[Social] Запрос на проверку подписки для ${telegramId} в сети ${socialNetwork}`);
-    console.log(`[Social] ✅ Подписка для ${telegramId} на ${socialNetwork} подтверждена (заглушка).`);
-    res.json({ success: true, message: `Вам начислено 100 бонусных баллов за подписку на ${socialNetwork}!` });
+    if (socialNetwork !== 'telegram') {
+        return res.status(400).json({ success: false, message: `Проверка для ${socialNetwork} пока не реализована.` });
+    }
+    try {
+        const isSubscribed = await telegramService.isUserSubscribed(telegramId);
+        if (isSubscribed) {
+            console.log(`[Social] ✅ Подписка для ${telegramId} на Telegram подтверждена.`);
+            res.json({ success: true, message: `Спасибо за подписку! Вам будет начислено 100 бонусных баллов.` });
+        } else {
+            console.log(`[Social] ⚠️ Подписка для ${telegramId} на Telegram НЕ подтверждена.`);
+            res.json({ success: false, message: `Мы не смогли подтвердить вашу подписку.` });
+        }
+    } catch (error) {
+        console.error('❌ [Social] Критическая ошибка при проверке подписки:', error);
+        res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера.' });
+    }
 });
 
-// Временный эндпоинт для инициализации AmoCRM
 app.get('/api/amocrm/init', async (req, res) => {
     try {
         await amocrmClient.getInitialToken();

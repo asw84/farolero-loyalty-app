@@ -1,7 +1,7 @@
 // frontend/src/api/index.ts
 // ПОЛНАЯ ВЕРСИЯ
 
-// ВАЖНО: Убедись, что здесь твой актуальный URL из тоннеля для бэкенда
+// ВАЖНО: Вставь сюда актуальный URL из твоего тоннеля для бэкенда
 const API_BASE_URL = 'https://ТВОЙ-АКТУАЛЬНЫЙ-АДРЕС.trycloudflare.com';
 
 // Функция для загрузки данных пользователя с бэкенда
@@ -82,7 +82,7 @@ export const fetchAdminStats = async () => {
   }
 };
 
-// --- НОВАЯ ФУНКЦИЯ ДЛЯ РУЧНОЙ КОРРЕКТИРОВКИ БАЛЛОВ ---
+// Функция для ручной корректировки баллов
 export const adjustUserPoints = async (telegramId: string, points: number, reason: string) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/admin/adjust-points`, {
@@ -98,5 +98,20 @@ export const adjustUserPoints = async (telegramId: string, points: number, reaso
   } catch (error) {
     console.error('Failed to adjust points:', error);
     return { success: false, message: 'Ошибка сети' };
+  }
+};
+
+// Функция для проверки подписки на соцсети
+export const checkSocialSubscription = async (telegramId: number | string, socialNetwork: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/social/check-subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegramId, socialNetwork }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to check subscription:', error);
+    return { success: false, message: 'Ошибка сети. Не удалось выполнить проверку.' };
   }
 };

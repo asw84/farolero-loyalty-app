@@ -1,20 +1,38 @@
 // frontend/src/pages/TasksPage.tsx
-import { useUser } from '../context/UserContext'; // Импортируем, чтобы знать ID пользователя
+// ПОЛНАЯ ВЕРСИЯ С ПРОВЕРКОЙ ЗАГРУЗКИ
+
+import { useUser } from '../context/UserContext';
+import { checkSocialSubscription } from '../api';
 
 const TasksPage = () => {
-  const { userData } = useUser(); // Получаем данные пользователя из хранилища
+  // --- Теперь мы берем не только userData, но и флаг `loading` ---
+  const { userData, loading } = useUser();
+  // -----------------------------------------------------------------
 
-  const handleCheckSubscription = (socialNetwork: string) => {
+  const handleCheckSubscription = async (socialNetwork: string) => {
+    // Эта проверка остается на всякий случай
     if (!userData.telegramId) {
       alert('Не удалось определить ваш ID. Попробуйте перезапустить приложение.');
       return;
     }
-    alert(`Проверяем вашу подписку на ${socialNetwork}... (это заглушка)`);
+
+    alert(`Проверяем вашу подписку на ${socialNetwork}...`);
     
-    // В будущем здесь будет вызов API:
-    // const response = await checkSocialSubscription(userData.telegramId, socialNetwork);
-    // alert(response.message);
+    const result = await checkSocialSubscription(userData.telegramId, socialNetwork);
+
+    if (result.success) {
+      alert(result.message);
+    } else {
+      alert(`Ошибка: ${result.message}`);
+    }
   };
+
+  // --- ДОБАВЛЯЕМ ПРОВЕРКУ ЗАГРУЗКИ ---
+  // Если данные еще загружаются, показываем заглушку
+  if (loading) {
+    return <div>Загрузка заданий...</div>;
+  }
+  // ------------------------------------
 
   return (
     <div style={{ padding: '20px' }}>
@@ -23,16 +41,13 @@ const TasksPage = () => {
       
       <div style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px', borderRadius: '8px' }}>
         <h3>Подписка на Telegram-канал</h3>
-        <p>Подпишитесь на наш <a href="https://t.me/farolero_world" target="_blank" rel="noopener noreferrer">Telegram-канал</a> и получите 100 баллов.</p>
+        <p>Подпишитесь на наш тестовый канал и получите 100 баллов.</p>
         <button onClick={() => handleCheckSubscription('telegram')}>Я подписался!</button>
       </div>
 
-      <div style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px', borderRadius: '8px' }}>
-        <h3>Подписка на VK</h3>
-        <p>Подпишитесь на нашу <a href="https://vk.com/farolero.world" target="_blank" rel="noopener noreferrer">группу ВКонтакте</a> и получите 100 баллов.</p>
-        <button onClick={() => handleCheckSubscription('vk')}>Я подписался!</button>
-      </div>
+      {/* Здесь можно будет добавить другие задания, например, VK */}
     </div>
   );
 };
+
 export default TasksPage;

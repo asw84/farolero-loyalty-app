@@ -1,23 +1,38 @@
-// src/components/TabBar.tsx
-import React from 'react';
+// frontend/src/components/TabBar.tsx
+// ПОЛНАЯ ВЕРСИЯ С НОВОЙ КНОПКОЙ "ЗАДАНИЯ"
+
 import { NavLink } from 'react-router-dom';
-import { FaHome, FaUser, FaUsers } from 'react-icons/fa'; // Иконки
-import './TabBar.css';
+import './TabBar.css'; // Предполагаем, что стили находятся здесь
+
+// Импортируем иконки (предполагаем, что они есть, если нет - можно использовать текст)
+// import { ReactComponent as HomeIcon } from '../assets/home.svg';
+// import { ReactComponent as TasksIcon } from '../assets/tasks.svg';
+// import { ReactComponent as FriendsIcon } from '../assets/friends.svg';
+// import { ReactComponent as ProfileIcon } from '../assets/profile.svg';
 
 const TabBar = () => {
   return (
     <nav className="tab-bar">
-      <NavLink to="/" className={({isActive}) => isActive ? 'tab-bar-item active' : 'tab-bar-item'}>
-        <FaHome size={24} />
+      <NavLink to="/" className="tab-item">
+        {/* <HomeIcon /> */}
         <span>Главная</span>
       </NavLink>
-      <NavLink to="/profile" className={({isActive}) => isActive ? 'tab-bar-item active' : 'tab-bar-item'}>
-        <FaUser size={24} />
-        <span>Профиль</span>
-      </NavLink>
-      <NavLink to="/referral" className={({isActive}) => isActive ? 'tab-bar-item active' : 'tab-bar-item'}>
-        <FaUsers size={24} />
+      
+      <NavLink to="/referral" className="tab-item">
+        {/* <FriendsIcon /> */}
         <span>Друзья</span>
+      </NavLink>
+      
+      {/* --- НОВАЯ КНОПКА --- */}
+      <NavLink to="/tasks" className="tab-item">
+        {/* <TasksIcon /> */}
+        <span>Задания</span>
+      </NavLink>
+      {/* -------------------- */}
+      
+      <NavLink to="/profile" className="tab-item">
+        {/* <ProfileIcon /> */}
+        <span>Профиль</span>
       </NavLink>
     </nav>
   );
