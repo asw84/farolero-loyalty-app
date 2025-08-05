@@ -145,10 +145,32 @@ function linkInstagramAccount(telegram_user_id, instagram_user_id, instagram_use
     });
 }
 
+/**
+ * Привязывает аккаунт VK к существующему пользователю по его telegram_user_id.
+ * @param {string} telegram_user_id - ID пользователя в Telegram.
+ * @param {string} vk_user_id - ID пользователя в VK.
+ * @returns {Promise<object>} Обновленные данные пользователя.
+ */
+function linkVkAccount(telegram_user_id, vk_user_id) {
+    return new Promise((resolve, reject) => {
+        const sql = `UPDATE users SET vk_user_id = ? WHERE telegram_user_id = ?`;
+        db.run(sql, [vk_user_id, telegram_user_id], function (err) {
+            if (err) return reject(err);
+            if (this.changes === 0) return reject(new Error('Пользователь с таким telegram_user_id не найден.'));
+            
+            db.get('SELECT * FROM users WHERE telegram_user_id = ?', [telegram_user_id], (err, user) => {
+                if (err) return reject(err);
+                resolve(user);
+            });
+        });
+    });
+}
+
 module.exports = {
     db,
     initializeDatabase,
     findOrCreateUser,
     addPoints,
     linkInstagramAccount,
+    linkVkAccount,
 };

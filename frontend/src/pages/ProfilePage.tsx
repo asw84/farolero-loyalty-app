@@ -1,12 +1,33 @@
 // frontend/src/pages/ProfilePage.tsx
-// ИСПРАВЛЕННАЯ ВЕРСИЯ
+// ВЕРСИЯ С КНОПКАМИ ПРИВЯЗКИ
 
-import { useUser } from '../context/UserContext'; // <-- Импортируем наш хук
+import { useUser } from '../context/UserContext';
 
 const ProfilePage = () => {
-  // --- Получаем все данные из общего хранилища ---
   const { userData, loading } = useUser();
-  // ---------------------------------------------
+
+  // --- Логика для ссылок авторизации ---
+  const handleInstagramLink = () => {
+    // Эти значения должны соответствовать тем, что в вашем Facebook App
+    const INSTAGRAM_APP_ID = 'your_instagram_app_id'; // TODO: Вынести в .env.development
+    const REDIRECT_URI = 'http://localhost:3001/api/oauth/instagram/callback';
+    
+    // Формируем ссылку для авторизации
+    const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${INSTAGRAM_APP_ID}&redirect_uri=${REDIRECT_URI}&scope=user_profile&response_type=code`;
+    
+    // Открываем ссылку в новом окне
+    window.open(authUrl, '_blank');
+  };
+
+  const handleVkLink = () => {
+    const VK_APP_ID = 'your_vk_app_id'; // TODO: Вынести в .env.development
+    const REDIRECT_URI = 'http://localhost:3001/api/oauth/vk/callback';
+    
+    const authUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=page&redirect_uri=${REDIRECT_URI}&scope=offline&response_type=code`;
+    
+    window.open(authUrl, '_blank');
+  };
+  // -------------------------------------
 
   if (loading) {
     return <div>Загрузка профиля...</div>;
@@ -15,10 +36,15 @@ const ProfilePage = () => {
   return (
     <div>
       <h1>Профиль</h1>
-      {/* Используем данные из userData */}
       <p>ID: {userData.telegramId}</p>
       <p>Баллы: <strong>{userData.points}</strong></p>
       <p>Статус: <strong>{userData.status}</strong></p>
+      <hr/>
+      
+      <h3>Привязка аккаунтов</h3>
+      <button onClick={handleInstagramLink}>Привязать Instagram</button>
+      <button onClick={handleVkLink} style={{ marginLeft: '10px' }}>Привязать VK</button>
+
       <hr/>
       <h3>Ваша реферальная ссылка:</h3>
       <p><code>{userData.referralLink}</code></p>

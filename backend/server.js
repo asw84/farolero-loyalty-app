@@ -20,6 +20,7 @@ const socialRoutes = require('./routes/social.routes');
 const amocrmRoutes = require('./routes/amocrm.routes');
 const vkRoutes = require('./routes/vk.routes');
 const instagramRoutes = require('./routes/instagram.routes');
+const vkOAuthRoutes = require('./routes/vk.oauth.routes');
 
 // --- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ---
 const app = express();
@@ -52,6 +53,7 @@ app.use('/api', socialRoutes);
 app.use('/api', amocrmRoutes);
 app.use('/api', vkRoutes);
 app.use('/api', instagramRoutes);
+app.use('/api', vkOAuthRoutes);
 
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {

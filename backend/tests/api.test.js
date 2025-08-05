@@ -11,6 +11,7 @@ const socialRoutes = require('../routes/social.routes');
 const amocrmRoutes = require('../routes/amocrm.routes');
 const vkRoutes = require('../routes/vk.routes');
 const instagramRoutes = require('../routes/instagram.routes');
+const vkOAuthRoutes = require('../routes/vk.oauth.routes');
 const orderController = require('../controllers/order.controller');
 const webhookService = require('../services/webhook.service');
 
@@ -57,6 +58,10 @@ jest.mock('../services/instagram.service', () => ({
     handleOAuthCallback: jest.fn(() => ({ success: true, message: 'Аккаунт Instagram успешно привязан!' })),
 }));
 
+jest.mock('../services/vk.oauth.service', () => ({
+    handleOAuthCallback: jest.fn(() => ({ success: true, message: 'Аккаунт VK успешно привязан!' })),
+}));
+
 const app = express();
 app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
@@ -73,6 +78,7 @@ app.use('/api', socialRoutes);
 app.use('/api', amocrmRoutes);
 app.use('/api', vkRoutes);
 app.use('/api', instagramRoutes);
+app.use('/api', vkOAuthRoutes);
 
 describe('API Endpoints', () => {
 
@@ -254,6 +260,26 @@ describe('API Endpoints', () => {
 
         it('GET /api/oauth/instagram/callback - should return 400 if code is missing', async () => {
             const res = await request(app).get('/api/oauth/instagram/callback');
+            
+            expect(res.statusCode).toEqual(400);
+            expect(res.text).toContain('Ошибка: отсутствует код авторизации');
+        });
+    });
+
+    // Тесты для VK OAuth
+    describe('VK OAuth', () => {
+        const vkOAuthService = require('../services/vk.oauth.service');
+
+        it('GET /api/oauth/vk/callback - should handle a valid code', async () => {
+            const res = await request(app).get('/api/oauth/vk/callback?code=valid_code');
+            
+            expect(res.statusCode).toEqual(200);
+            expect(res.text).toBe('Аккаунт VK успешно привязан!');
+            expect(vkOAuthService.handleOAuthCallback).toHaveBeenCalledWith('valid_code', '123456789');
+        });
+
+        it('GET /api/oauth/vk/callback - should return 400 if code is missing', async () => {
+            const res = await request(app).get('/api/oauth/vk/callback');
             
             expect(res.statusCode).toEqual(400);
             expect(res.text).toContain('Ошибка: отсутствует код авторизации');
