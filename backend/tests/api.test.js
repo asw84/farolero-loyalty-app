@@ -5,7 +5,12 @@ const express = require('express');
 const walkRoutes = require('../routes/walk.routes');
 const userRoutes = require('../routes/user.routes');
 const orderRoutes = require('../routes/order.routes');
+const webhookRoutes = require('../routes/webhook.routes');
+const adminRoutes = require('../routes/admin.routes');
+const socialRoutes = require('../routes/social.routes');
+const amocrmRoutes = require('../routes/amocrm.routes');
 const orderController = require('../controllers/order.controller');
+const webhookService = require('../services/webhook.service');
 
 // Моки для сервисов, чтобы не делать реальные запросы
 jest.mock('../services/walk.service', () => ({
@@ -21,8 +26,25 @@ jest.mock('../services/order.service', () => ({
     createOrder: jest.fn(() => ({ orderUrl: 'http://test.url' })),
 }));
 
+jest.mock('../services/webhook.service', () => ({
+    handleSuccessfulPayment: jest.fn(() => ({ success: true, message: 'OK' })),
+}));
+
+jest.mock('../services/admin.service', () => ({
+    getStats: jest.fn(() => ({ totalUsers: 100 })),
+    adjustPoints: jest.fn(() => ({ success: true, newTotalPoints: 200 })),
+}));
+
+jest.mock('../services/social.service', () => ({
+    checkSubscription: jest.fn(() => ({ success: true })),
+}));
+
+jest.mock('../amocrm/apiClient', () => ({
+    getInitialToken: jest.fn(() => Promise.resolve()),
+}));
+
 const app = express();
-app.use(express.json());
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // Инициализация
 const WALK_URLS = { 1: 'http://test.url' };
@@ -31,6 +53,10 @@ orderController.init(WALK_URLS);
 app.use('/api', walkRoutes);
 app.use('/api', userRoutes);
 app.use('/api', orderRoutes);
+app.use('/api', webhookRoutes);
+app.use('/api', adminRoutes);
+app.use('/api', socialRoutes);
+app.use('/api', amocrmRoutes);
 
 describe('API Endpoints', () => {
 
@@ -84,6 +110,84 @@ describe('API Endpoints', () => {
                 .post('/api/order')
                 .send({ telegramId: 123 }); // Отсутствует walkId
             expect(res.statusCode).toEqual(400);
+        });
+    });
+
+    // Тесты для Webhook API
+    describe('Webhook API', () => {
+        it('POST /api/webhooks/qtickets - should return 200 for a valid paid event', async () => {
+            const payload = { client: { details: { telegram_user: { id: 123 } } } };
+            const signature = require('crypto').createHmac('sha1', process.env.QTICKETS_WEBHOOK_SECRET).update(JSON.stringify(payload)).digest('hex');
+
+            const res = await request(app)
+                .post('/api/webhooks/qtickets')
+                .set('x-event-type', 'payed')
+                .set('x-signature', signature)
+                .send(payload);
+            
+            expect(res.statusCode).toEqual(200);
+            expect(webhookService.handleSuccessfulPayment).toHaveBeenCalled();
+        });
+
+        it('POST /api/webhooks/qtickets - should return 403 for an invalid signature', async () => {
+            const res = await request(app)
+                .post('/api/webhooks/qtickets')
+                .set('x-event-type', 'payed')
+                .set('x-signature', 'invalid_signature')
+                .send({});
+            
+            expect(res.statusCode).toEqual(403);
+        });
+
+        it('POST /api/webhooks/qtickets - should return 200 and skip non-paid events', async () => {
+            const payload = {};
+            const signature = require('crypto').createHmac('sha1', process.env.QTICKETS_WEBHOOK_SECRET).update(JSON.stringify(payload)).digest('hex');
+
+            const res = await request(app)
+                .post('/api/webhooks/qtickets')
+                .set('x-event-type', 'created') // Не 'payed'
+                .set('x-signature', signature)
+                .send(payload);
+            
+            expect(res.statusCode).toEqual(200);
+            expect(webhookService.handleSuccessfulPayment).not.toHaveBeenCalled();
+        });
+    });
+
+    // Тесты для Admin API
+    describe('Admin API', () => {
+        it('GET /api/admin/stats - should return stats', async () => {
+            const res = await request(app).get('/api/admin/stats');
+            expect(res.statusCode).toEqual(200);
+            expect(res.body).toHaveProperty('totalUsers', 100);
+        });
+
+        it('POST /api/admin/adjust-points - should adjust points', async () => {
+            const res = await request(app)
+                .post('/api/admin/adjust-points')
+                .send({ telegramId: 123, points: 100, reason: 'Test' });
+            expect(res.statusCode).toEqual(200);
+            expect(res.body).toHaveProperty('newTotalPoints', 200);
+        });
+    });
+
+    // Тесты для Social API
+    describe('Social API', () => {
+        it('POST /api/social/check-subscription - should return success', async () => {
+            const res = await request(app)
+                .post('/api/social/check-subscription')
+                .send({ telegramId: 123, socialNetwork: 'telegram' });
+            expect(res.statusCode).toEqual(200);
+            expect(res.body.success).toBe(true);
+        });
+    });
+
+    // Тесты для AmoCRM API
+    describe('AmoCRM API', () => {
+        it('GET /api/amocrm/init - should return a success message', async () => {
+            const res = await request(app).get('/api/amocrm/init');
+            expect(res.statusCode).toEqual(200);
+            expect(res.text).toContain('успешно получены');
         });
     });
 
