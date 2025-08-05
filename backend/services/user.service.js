@@ -1,24 +1,31 @@
 // backend/services/user.service.js
 
-const amocrmClient = require('../amocrm/apiClient');
-
-const POINTS_FIELD_ID = process.env.AMO_POINTS_FIELD_ID;
+const { findOrCreateUser } = require('../database');
 
 async function getUserData(telegramId) {
-    console.log(`[User] Запрошены данные для пользователя с Telegram ID: ${telegramId}`);
-    const contact = await amocrmClient.findContactByTelegramId(telegramId);
-    if (!contact) {
-        console.log(`[User] ⚠️ Пользователь с Telegram ID ${telegramId} не найден.`);
-        return null;
+    console.log(`[UserService] Запрошены данные для пользователя с Telegram ID: ${telegramId}`);
+    try {
+        const user = await findOrCreateUser(String(telegramId), 'telegram_user_id');
+
+        if (!user) {
+            // Эта ситуация маловероятна, так как findOrCreateUser должен всегда возвращать пользователя
+            console.log(`[UserService] ⚠️ Пользователь с Telegram ID ${telegramId} не найден и не может быть создан.`);
+            return null;
+        }
+
+        const userData = {
+            points: user.points,
+            status: 'Стандарт', // В будущем можно будет добавить логику статусов
+            referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}` // Логика реферальной ссылки остается
+        };
+
+        console.log(`[UserService] ✅ Пользователь найден. Отправляю данные:`, userData);
+        return userData;
+
+    } catch (error) {
+        console.error('❌ [UserService] Ошибка при получении данных пользователя:', error);
+        throw error; // Передаем ошибку выше, чтобы контроллер мог ее обработать
     }
-    const points = contact.custom_fields_values?.find(field => field.field_id == POINTS_FIELD_ID)?.values[0]?.value || 0;
-    const userData = {
-        points: Number(points),
-        status: 'Стандарт',
-        referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
-    };
-    console.log(`[User] ✅ Пользователь найден. Отправляю данные:`, userData);
-    return userData;
 }
 
 module.exports = {

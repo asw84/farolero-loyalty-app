@@ -14,14 +14,18 @@ const orderController = require('../controllers/order.controller');
 const webhookService = require('../services/webhook.service');
 
 // Моки для сервисов, чтобы не делать реальные запросы
+jest.mock('../database', () => ({
+    initializeDatabase: jest.fn(),
+    findOrCreateUser: jest.fn((id, type) => Promise.resolve({ id: 1, [type]: id, points: 100 })),
+    addPoints: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock('../services/walk.service', () => ({
     getAllWalks: jest.fn(() => [{ id: 1, title: 'Test Walk' }]),
     getWalkById: jest.fn(id => (id == 1 ? { id: 1, title: 'Test Walk' } : null)),
 }));
 
-jest.mock('../services/user.service', () => ({
-    getUserData: jest.fn(id => (id == 123 ? { points: 100 } : null)),
-}));
+
 
 jest.mock('../services/order.service', () => ({
     createOrder: jest.fn(() => ({ orderUrl: 'http://test.url' })),
@@ -95,9 +99,10 @@ describe('API Endpoints', () => {
             expect(res.body).toHaveProperty('points', 100);
         });
 
-        it('GET /api/user/:telegramId - should return 404 for an invalid ID', async () => {
+        it('GET /api/user/:telegramId - should create a new user if not found', async () => {
             const res = await request(app).get('/api/user/999');
-            expect(res.statusCode).toEqual(404);
+            expect(res.statusCode).toEqual(200);
+            expect(res.body).toHaveProperty('points', 100); // Наш мок возвращает 100
         });
     });
 

@@ -8,6 +8,7 @@ const cors = require('cors');
 // --- ИМПОРТЫ ---
 const walkService = require('./services/walk.service');
 const orderController = require('./controllers/order.controller');
+const { initializeDatabase } = require('./database');
 
 // --- ИМПОРТЫ МАРШРУТОВ ---
 const walkRoutes = require('./routes/walk.routes');
@@ -53,6 +54,8 @@ app.use('/api', vkRoutes);
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {
     console.log(`✅ Основной бэкенд-сервер запущен на http://localhost:${PORT}`);
+    // Инициализируем базу данных
+    initializeDatabase();
     // Загружаем кеш прогулок при старте
     walkService.loadQticketsData();
 });
