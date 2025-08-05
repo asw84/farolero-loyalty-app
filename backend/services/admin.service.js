@@ -1,17 +1,32 @@
 // backend/services/admin.service.js
 
-const amocrmClient = require('../amocrm/apiClient');
-
-const POINTS_FIELD_ID = process.env.AMO_POINTS_FIELD_ID;
+const { db, findOrCreateUser, addPoints } = require('../database');
 
 /**
- * Возвращает статичные данные для админ-панели.
- * @returns {object} Статистика.
+ * Возвращает статистику из базы данных.
+ * @returns {Promise<object>} Статистика.
  */
 function getStats() {
-    console.log('[AdminService] Запрошена статистика');
-    // В будущем здесь может быть реальная логика подсчета
-    return { totalUsers: 150, ticketsSold: 75, pointsSpent: 12500 };
+    return new Promise((resolve, reject) => {
+        const totalUsersQuery = 'SELECT COUNT(*) as totalUsers FROM users';
+        const ticketsSoldQuery = "SELECT COUNT(*) as ticketsSold FROM activity WHERE activity_type = 'purchase'";
+        const pointsSpentQuery = "SELECT SUM(points_awarded) as pointsSpent FROM activity WHERE points_awarded < 0"; // Пример, как можно считать потраченные баллы
+
+        db.get(totalUsersQuery, [], (err, usersRow) => {
+            if (err) return reject(err);
+            db.get(ticketsSoldQuery, [], (err, ticketsRow) => {
+                if (err) return reject(err);
+                db.get(pointsSpentQuery, [], (err, pointsRow) => {
+                    if (err) return reject(err);
+                    resolve({
+                        totalUsers: usersRow.totalUsers,
+                        ticketsSold: ticketsRow.ticketsSold,
+                        pointsSpent: Math.abs(pointsRow.pointsSpent || 0)
+                    });
+                });
+            });
+        });
+    });
 }
 
 /**
@@ -19,26 +34,31 @@ function getStats() {
  * @param {string} telegramId - ID пользователя в Telegram.
  * @param {number} points - Количество баллов для добавления (может быть отрицательным).
  * @param {string} reason - Причина корректировки.
- * @returns {object} Новый баланс пользователя.
+ * @returns {Promise<object>} Новый баланс пользователя.
  */
 async function adjustPoints(telegramId, points, reason) {
     console.log(`[AdminService] Ручная корректировка баллов для ${telegramId}. Сумма: ${points}. Причина: ${reason}`);
 
-    const contact = await amocrmClient.findContactByTelegramId(telegramId);
-    if (!contact) {
-        // Выбрасываем ошибку, чтобы контроллер мог ее поймать и отправить 404
-        const error = new Error('Пользователь не найден в AmoCRM.');
-        error.statusCode = 404;
+    try {
+        const user = await findOrCreateUser(String(telegramId), 'telegram_user_id');
+        
+        if (!user) {
+            const error = new Error('Пользователь не найден и не может быть создан.');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        await addPoints(user.id, points, 'manual', reason);
+
+        const updatedUser = await findOrCreateUser(String(telegramId), 'telegram_user_id');
+
+        console.log(`[AdminService] ✅ Баллы для ${telegramId} обновлены. Новый баланс: ${updatedUser.points}`);
+        return { success: true, newTotalPoints: updatedUser.points };
+
+    } catch (error) {
+        console.error('❌ [AdminService] Ошибка при ручной корректировке баллов:', error);
         throw error;
     }
-
-    const currentPoints = Number(contact.custom_fields_values?.find(f => f.field_id == POINTS_FIELD_ID)?.values[0]?.value || 0);
-    const newTotalPoints = currentPoints + Number(points);
-
-    await amocrmClient.updateContact(contact.id, { [POINTS_FIELD_ID]: newTotalPoints });
-
-    console.log(`[AdminService] ✅ Баллы для ${telegramId} обновлены. Было: ${currentPoints}, стало: ${newTotalPoints}`);
-    return { success: true, newTotalPoints };
 }
 
 module.exports = {
