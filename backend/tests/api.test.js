@@ -9,6 +9,7 @@ const webhookRoutes = require('../routes/webhook.routes');
 const adminRoutes = require('../routes/admin.routes');
 const socialRoutes = require('../routes/social.routes');
 const amocrmRoutes = require('../routes/amocrm.routes');
+const vkRoutes = require('../routes/vk.routes');
 const orderController = require('../controllers/order.controller');
 const webhookService = require('../services/webhook.service');
 
@@ -43,6 +44,10 @@ jest.mock('../amocrm/apiClient', () => ({
     getInitialToken: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock('../services/vk.service', () => ({
+    handleNewWallReply: jest.fn(() => ({ success: true })),
+}));
+
 const app = express();
 app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
@@ -57,6 +62,7 @@ app.use('/api', webhookRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', socialRoutes);
 app.use('/api', amocrmRoutes);
+app.use('/api', vkRoutes);
 
 describe('API Endpoints', () => {
 
@@ -188,6 +194,38 @@ describe('API Endpoints', () => {
             const res = await request(app).get('/api/amocrm/init');
             expect(res.statusCode).toEqual(200);
             expect(res.text).toContain('успешно получены');
+        });
+    });
+
+    // Тесты для VK Callback API
+    describe('VK Callback API', () => {
+        const vkService = require('../services/vk.service');
+
+        it('POST /api/webhooks/vk - should handle confirmation', async () => {
+            const res = await request(app)
+                .post('/api/webhooks/vk')
+                .send({ type: 'confirmation', secret: process.env.VK_SECRET_KEY });
+            
+            expect(res.statusCode).toEqual(200);
+            expect(res.text).toBe(process.env.VK_CONFIRMATION_TOKEN);
+        });
+
+        it('POST /api/webhooks/vk - should handle new wall reply', async () => {
+            const res = await request(app)
+                .post('/api/webhooks/vk')
+                .send({ type: 'wall_reply_new', object: { from_id: 123, text: 'test' }, secret: process.env.VK_SECRET_KEY });
+            
+            expect(res.statusCode).toEqual(200);
+            expect(res.text).toBe('ok');
+            expect(vkService.handleNewWallReply).toHaveBeenCalled();
+        });
+
+        it('POST /api/webhooks/vk - should return 403 for invalid secret', async () => {
+            const res = await request(app)
+                .post('/api/webhooks/vk')
+                .send({ type: 'confirmation', secret: 'invalid_secret' });
+            
+            expect(res.statusCode).toEqual(403);
         });
     });
 

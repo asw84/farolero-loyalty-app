@@ -17,6 +17,7 @@ const webhookRoutes = require('./routes/webhook.routes');
 const adminRoutes = require('./routes/admin.routes');
 const socialRoutes = require('./routes/social.routes');
 const amocrmRoutes = require('./routes/amocrm.routes');
+const vkRoutes = require('./routes/vk.routes');
 
 // --- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ---
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api', webhookRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', socialRoutes);
 app.use('/api', amocrmRoutes);
+app.use('/api', vkRoutes);
 
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {
