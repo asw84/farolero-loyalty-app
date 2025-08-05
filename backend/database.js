@@ -118,9 +118,37 @@ function addPoints(user_id, points, source, activity_type) {
     });
 }
 
+/**
+ * Привязывает аккаунт Instagram к существующему пользователю по его telegram_user_id.
+ * @param {string} telegram_user_id - ID пользователя в Telegram.
+ * @param {string} instagram_user_id - ID пользователя в Instagram.
+ * @param {string} instagram_username - Имя пользователя в Instagram.
+ * @returns {Promise<object>} Обновленные данные пользователя.
+ */
+function linkInstagramAccount(telegram_user_id, instagram_user_id, instagram_username) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            UPDATE users 
+            SET instagram_user_id = ?, instagram_username = ? 
+            WHERE telegram_user_id = ?
+        `;
+        db.run(sql, [instagram_user_id, instagram_username, telegram_user_id], function (err) {
+            if (err) return reject(err);
+            if (this.changes === 0) return reject(new Error('Пользователь с таким telegram_user_id не найден.'));
+            
+            // Возвращаем обновленного пользователя
+            db.get('SELECT * FROM users WHERE telegram_user_id = ?', [telegram_user_id], (err, user) => {
+                if (err) return reject(err);
+                resolve(user);
+            });
+        });
+    });
+}
+
 module.exports = {
     db,
     initializeDatabase,
     findOrCreateUser,
     addPoints,
+    linkInstagramAccount,
 };

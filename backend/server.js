@@ -19,6 +19,7 @@ const adminRoutes = require('./routes/admin.routes');
 const socialRoutes = require('./routes/social.routes');
 const amocrmRoutes = require('./routes/amocrm.routes');
 const vkRoutes = require('./routes/vk.routes');
+const instagramRoutes = require('./routes/instagram.routes');
 
 // --- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ---
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api', adminRoutes);
 app.use('/api', socialRoutes);
 app.use('/api', amocrmRoutes);
 app.use('/api', vkRoutes);
+app.use('/api', instagramRoutes);
 
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {
