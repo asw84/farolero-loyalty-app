@@ -1,19 +1,24 @@
 // backend/server.js
-// ПОЛНАЯ ВЕРСИЯ СО ВСЕМИ ИЗМЕНЕНИЯМИ И РЕАЛЬНЫМИ ID
+// РЕФАКТОРИНГ: Логика заказов вынесена в routes/controllers/services
 
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const amocrmClient = require('./amocrm/apiClient');
 const qticketsService = require('./qtickets/qticketsService');
-const qticketsRestApiClient = require('./qtickets/restApiClient');
 const telegramService = require('./telegram/telegramService');
+const walkService = require('./services/walk.service'); // Импортируем сервис
+const walkRoutes = require('./routes/walk.routes'); // Импортируем роуты
+const userRoutes = require('./routes/user.routes'); // Импортируем роуты
+const orderRoutes = require('./routes/order.routes'); // Импортируем роуты
+const orderController = require('./controllers/order.controller'); // Импортируем контроллер
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // --- КОНФИГУРАЦИЯ ---
-const QTICKETS_DISCOUNT_ID = '51147';
+const QTICKETS_DISCOUNT_ID = process.env.QTICKETS_DISCOUNT_ID;
 const WALK_URLS = {
     1578: 'https://t.me/QticketsBuyBot/buy?startapp=1578', 17333: 'https://t.me/QticketsBuyBot/buy?startapp=17333',
     16423: 'https://t.me/QticketsBuyBot/buy?startapp=16423', 1562: 'https://t.me/QticketsBuyBot/buy?startapp=1562',
@@ -21,117 +26,25 @@ const WALK_URLS = {
     25437: 'https://t.me/QticketsBuyBot/buy?startapp=25437', 18920: 'https://t.me/QticketsBuyBot/buy?startapp=18920',
     2616: 'https://t.me/QticketsBuyBot/buy?startapp=2616',
 };
-const QTICKETS_WEBHOOK_SECRET = 'this-is-our-super-secret-key-for-qtickets';
+const QTICKETS_WEBHOOK_SECRET = process.env.QTICKETS_WEBHOOK_SECRET;
 
 // --- НАСТРОЙКА СЕРВЕРА ---
 app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(cors({ origin: '*' }));
 
+// Инициализация контроллера заказов
+orderController.init(WALK_URLS);
+
+// --- РЕГИСТРАЦИЯ МАРШРУТОВ ---
+app.use('/api', walkRoutes);
+app.use('/api', userRoutes);
+app.use('/api', orderRoutes);
+
 // --- ID ПОЛЕЙ AMO ---
-const TELEGRAM_ID_FIELD_ID = 986899;
-const POINTS_FIELD_ID = 986893;
+const TELEGRAM_ID_FIELD_ID = process.env.AMO_TELEGRAM_ID_FIELD;
+const POINTS_FIELD_ID = process.env.AMO_POINTS_FIELD_ID;
 
-let qticketsEventsCache = [];
-
-async function loadQticketsData() {
-    try {
-        console.log('[Qtickets] Загрузка списка мероприятий...');
-        const response = await qticketsRestApiClient.get('/events');
-        if (response.data && response.data.data) {
-            qticketsEventsCache = response.data.data.filter(event => event.is_active);
-            console.log(`[Qtickets] ✅ Успешно загружено ${qticketsEventsCache.length} активных мероприятий.`);
-        } else {
-            qticketsEventsCache = [];
-        }
-    } catch (error) {
-        console.error('❌ [Qtickets] Критическая ошибка при загрузке мероприятий:', error.response ? error.response.data : error.message);
-        qticketsEventsCache = [];
-    }
-}
-
-// --- ОСНОВНЫЕ API ЭНДПОИНТЫ ---
-app.get('/api/walks', (req, res) => {
-    console.log(`[Walks] Отдаю КОРОТКИЙ список из ${qticketsEventsCache.length} прогулок`);
-    const walks = qticketsEventsCache.map(event => ({
-        id: event.id,
-        city: event.city ? event.city.name : 'Город не указан',
-        title: event.name,
-        price: event.shows[0]?.prices[0]?.default_price || 0,
-    }));
-    res.json(walks);
-});
-
-app.get('/api/walk/:id', (req, res) => {
-    const { id } = req.params;
-    console.log(`[WalkDetails] Запрошены детали для прогулки ID: ${id}`);
-    const event = qticketsEventsCache.find(e => e.id == id);
-    if (event) {
-        res.json({
-            id: event.id,
-            city: event.city ? event.city.name : 'Город не указан',
-            title: event.name,
-            price: event.shows[0]?.prices[0]?.default_price || 0,
-            duration: '1.5 часа',
-            description: (event.description || '').replace(/<[^>]*>?/gm, ''),
-        });
-    } else {
-        res.status(404).json({ message: 'Прогулка не найдена' });
-    }
-});
-
-app.get('/api/user/:telegramId', async (req, res) => {
-    const { telegramId } = req.params;
-    console.log(`[User] Запрошены данные для пользователя с Telegram ID: ${telegramId}`);
-    try {
-        const contact = await amocrmClient.findContactByTelegramId(telegramId);
-        if (!contact) {
-            console.log(`[User] ⚠️ Пользователь с Telegram ID ${telegramId} не найден.`);
-            return res.status(404).json({ message: 'Пользователь не найден' });
-        }
-        const points = contact.custom_fields_values?.find(field => field.field_id === POINTS_FIELD_ID)?.values[0]?.value || 0;
-        const userData = {
-            points: Number(points),
-            status: 'Стандарт',
-            referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
-        };
-        console.log(`[User] ✅ Пользователь найден. Отправляю данные:`, userData);
-        res.json(userData);
-    } catch (error) {
-        console.error(`❌ [User] Ошибка при получении данных пользователя ${telegramId}:`, error);
-        res.status(500).json({ message: 'Ошибка на сервере' });
-    }
-});
-
-app.post('/api/order', async (req, res) => {
-    const { telegramId, walkId } = req.body;
-    console.log(`[Order] Получен запрос на создание заказа от telegramId: ${telegramId} для walkId: ${walkId}`);
-    if (!telegramId || !walkId) return res.status(400).json({ message: 'Необходимы telegramId и walkId.' });
-    const telegramAppUrl = WALK_URLS[walkId];
-    if (!telegramAppUrl) return res.status(404).json({ message: `Ссылка для покупки на прогулку ${walkId} не найдена.` });
-    try {
-        const contact = await amocrmClient.findContactByTelegramId(telegramId);
-        if (!contact) return res.status(404).json({ message: 'Пользователь не найден в CRM.' });
-        const userPoints = contact.custom_fields_values.find(field => field.field_id === POINTS_FIELD_ID)?.values[0]?.value || 0;
-        const walk = qticketsEventsCache.find(e => e.id == walkId);
-        const walkPrice = walk.shows[0]?.prices[0]?.default_price || 0;
-        const pointsToUse = Math.min(parseInt(userPoints, 10), parseInt(walkPrice, 10));
-        let promoCode = null;
-        if (pointsToUse > 0) {
-            promoCode = await qticketsService.createSinglePromoCode(QTICKETS_DISCOUNT_ID);
-        }
-        const finalUrl = new URL(telegramAppUrl);
-        finalUrl.searchParams.append('utm_source', 'loyalty_app');
-        finalUrl.searchParams.append('utm_campaign', `tgid_${telegramId}`);
-        if (promoCode) {
-            finalUrl.searchParams.append('promo', promoCode);
-        }
-        console.log(`[Order] ✅ Заказ успешно сформирован. Отправляю ссылку: ${finalUrl.toString()}`);
-        res.json({ orderUrl: finalUrl.toString() });
-    } catch (error) {
-        console.error('❌ [Order] Критическая ошибка при создании заказа:', error);
-        res.status(500).json({ message: 'Внутренняя ошибка сервера' });
-    }
-});
+// --- ОСНОВНЫЕ API ЭНДПОИНТЫ (оставшиеся) ---
 
 app.post('/api/webhook/qtickets', async (req, res) => {
     console.log('[Webhook] Получено уведомление от Qtickets!');
@@ -177,7 +90,7 @@ app.post('/api/webhook/qtickets', async (req, res) => {
                 console.log(`[DelayedTask] ВРЕМЯ ПРИШЛО! Начисляю 100 баллов для ${telegramId}.`);
                 const freshContact = await amocrmClient.findContactByTelegramId(telegramId);
                 if (freshContact) {
-                    const currentPoints = Number(freshContact.custom_fields_values?.find(f => f.field_id === POINTS_FIELD_ID)?.values[0]?.value || 0);
+                    const currentPoints = Number(freshContact.custom_fields_values?.find(f => f.field_id == POINTS_FIELD_ID)?.values[0]?.value || 0);
                     const newTotalPoints = currentPoints + 100;
                     await amocrmClient.updateContact(freshContact.id, { [POINTS_FIELD_ID]: newTotalPoints });
                     console.log(`[DelayedTask] ✅ Баллы успешно начислены. Новый баланс: ${newTotalPoints}`);
@@ -219,7 +132,7 @@ app.post('/api/admin/adjust-points', async (req, res) => {
         if (!contact) {
             return res.status(404).json({ message: 'Пользователь не найден в AmoCRM.' });
         }
-        const currentPoints = Number(contact.custom_fields_values?.find(f => f.field_id === POINTS_FIELD_ID)?.values[0]?.value || 0);
+        const currentPoints = Number(contact.custom_fields_values?.find(f => f.field_id == POINTS_FIELD_ID)?.values[0]?.value || 0);
         const newTotalPoints = currentPoints + Number(points);
         await amocrmClient.updateContact(contact.id, { [POINTS_FIELD_ID]: newTotalPoints });
         console.log(`[Admin] ✅ Баллы для ${telegramId} обновлены. Было: ${currentPoints}, стало: ${newTotalPoints}`);
@@ -262,5 +175,5 @@ app.get('/api/amocrm/init', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`✅ Основной бэкенд-сервер запущен на http://localhost:${PORT}`);
-    loadQticketsData();
+    walkService.loadQticketsData(); // Используем сервис для загрузки данных
 });
