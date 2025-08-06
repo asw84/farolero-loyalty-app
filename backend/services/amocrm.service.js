@@ -1,9 +1,22 @@
 // backend/services/amocrm.service.js
+// ВЕРСИЯ С ОТЛАДКОЙ
+
 const amocrmClient = require('../amocrm/apiClient');
-const { POINTS_FIELD_ID } = require('../config'); // <-- Будем хранить ID в конфиге
+const { POINTS_FIELD_ID } = require('../config');
 
 async function findContactByTelegramId(telegramId) {
-    return await amocrmClient.findContactByTelegramId(telegramId);
+    const contact = await amocrmClient.findContactByTelegramId(telegramId);
+    
+    // --- НАША "ШПИОНСКАЯ" СТРОКА ---
+    if (contact) {
+        console.log('--- ПОЛНЫЙ ОБЪЕКТ КОНТАКТА ИЗ AMO ---');
+        // Мы используем JSON.stringify, чтобы увидеть всю вложенную структуру
+        console.log(JSON.stringify(contact, null, 2)); 
+        console.log('------------------------------------');
+    }
+    // ------------------------------------
+
+    return contact;
 }
 
 function extractPointsFromContact(contact) {
