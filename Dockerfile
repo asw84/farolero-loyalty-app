@@ -12,11 +12,16 @@ COPY backend/ .
 FROM node:18-alpine
 WORKDIR /app
 
-# Копируем готовый бэкенд из стадии сборки
-COPY --from=backend-builder /app .
+# Копируем файлы бэкенда, но не node_modules
+COPY --from=backend-builder /app/backend/package*.json ./backend/
+# Переустанавливаем зависимости в финальной стадии для корректной компиляции нативных модулей
+RUN cd backend && npm install --omit=dev
+
+# Копируем остальные файлы бэкенда
+COPY --from=backend-builder /app/backend/. ./backend/
 
 # Копируем ГОТОВЫЙ ФРОНТЕНД из папки frontend/dist в папку 'public'
 COPY frontend/dist ./public
 
 EXPOSE 3001
-CMD [ "node", "server.js" ]
+CMD [ "node", "backend/server.js" ]
