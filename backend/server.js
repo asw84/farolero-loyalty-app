@@ -251,14 +251,7 @@ app.post('/api/social/check-subscription', async (req, res) => {
     }
 });
 
-app.get('/api/amocrm/init', async (req, res) => {
-    try {
-        await amocrmClient.getInitialToken();
-        res.send('Токены AmoCRM успешно получены и сохранены. Эндпоинт можно удалить.');
-    } catch (error) {
-        res.status(500).send('Ошибка при получении токенов. Проверь консоль бэкенда.');
-    }
-});
+
 
 app.listen(PORT, () => {
     console.log(`✅ Основной бэкенд-сервер запущен на http://localhost:${PORT}`);

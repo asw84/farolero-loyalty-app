@@ -2,7 +2,7 @@
 // ПОЛНАЯ ВЕРСИЯ
 
 // ВАЖНО: Вставь сюда актуальный URL из твоего тоннеля для бэкенда
-const API_BASE_URL = 'https://ТВОЙ-АКТУАЛЬНЫЙ-АДРЕС.trycloudflare.com';
+const API_BASE_URL = 'https://elite-additions-fall-mr.trycloudflare.com';
 
 // Функция для загрузки данных пользователя с бэкенда
 export const fetchUserData = async (telegramId: number | string) => {
