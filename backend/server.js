@@ -4,6 +4,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path'); // <-- ДОБАВИТЬ ЭТУ СТРОКУ
 
 // --- ИМПОРТЫ ---
 const walkService = require('./services/walk.service');
@@ -43,7 +44,7 @@ app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 // --- ИНИЦИАЛИЗАЦИЯ КОНТРОЛЛЕРОВ ---
 orderController.init(WALK_URLS);
 
-// --- РЕГИСТРАЦИЯ МАРШРУТОВ ---
+// --- РЕГИСТРАЦИЯ API МАРШРУТОВ ---
 app.use('/api', walkRoutes);
 app.use('/api', userRoutes);
 app.use('/api', orderRoutes);
@@ -55,9 +56,20 @@ app.use('/api', vkRoutes);
 app.use('/api', instagramRoutes);
 app.use('/api', vkOAuthRoutes);
 
+// --- НОВЫЙ БЛОК: РАЗДАЧА ФРОНТЕНДА ---
+// Указываем Express, где лежат собранные файлы фронтенда
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Для всех остальных запросов (которые не /api), отдаем index.html
+// Это нужно для работы React Router
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+// ------------------------------------
+
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {
-    console.log(`✅ Основной бэкенд-сервер запущен на http://localhost:${PORT}`);
+    console.log(`✅ Сервер запущен на порту ${PORT}`);
     // Инициализируем базу данных
     initializeDatabase();
     // Загружаем кеш прогулок при старте
