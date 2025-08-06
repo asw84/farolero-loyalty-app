@@ -1,9 +1,9 @@
-// backend/routes/user.routes.js
-
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user.controller');
 
-router.get('/user/:telegramId', userController.getUser);
+// Было: /user/:
+// Стало: /user/:telegramId
+router.get('/user/:telegramId', userController.getById);
 
 module.exports = router;
