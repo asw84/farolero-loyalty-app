@@ -2,12 +2,12 @@
 // ФИНАЛЬНАЯ ВЕРСИЯ С СИНХРОНИЗАЦИЕЙ
 
 const amocrmService = require('./amocrm.service');
-const db = require('../database');
+const { findUserByTelegramId, findOrCreateUser, updateUser } = require('../database');
 
 async function getUserData(telegramId) {
     console.log(`[UserService] Запрошены данные для ${telegramId}`);
     try {
-        let user = await db.findUserByTelegramId(telegramId);
+        let user = await findUserByTelegramId(telegramId);
 
         // Если пользователя нет в нашей БД или он еще не синхронизирован
         if (!user || !user.synced_with_amo) {
@@ -23,16 +23,16 @@ async function getUserData(telegramId) {
             }
 
             if (user) { // Если пользователь уже есть, но не синхронизирован
-                await db.updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
+                await updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
             } else { // Если пользователя вообще нет
                 // findOrCreateUser создаст его
-                await db.findOrCreateUser(telegramId, 'telegram_user_id');
+                await findOrCreateUser(telegramId, 'telegram_user_id');
                 // и мы сразу обновим ему баллы
-                await db.updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
+                await updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
             }
             
             // Перезапрашиваем данные пользователя из нашей БД после обновления
-            user = await db.findUserByTelegramId(telegramId);
+            user = await findUserByTelegramId(telegramId);
         }
 
         const userData = {

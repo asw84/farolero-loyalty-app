@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTelegram } from '../hooks/useTelegram';
 import { fetchWalkById, createOrder } from '../api';
-import { useUser } from '../context/UserContext';
+import { useUser } from '../hooks/useUser';
 
 interface WalkDetails {
   id: number;

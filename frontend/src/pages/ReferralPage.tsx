@@ -2,7 +2,7 @@
 // ИСПРАВЛЕННАЯ ВЕРСИЯ С КОНТЕКСТОМ
 
 import { QRCodeSVG } from 'qrcode.react';
-import { useUser } from '../context/UserContext'; // <-- Импортируем наш хук
+import { useUser } from '../hooks/useUser';
 
 const ReferralPage = () => {
   // --- Получаем все данные из общего хранилища ---

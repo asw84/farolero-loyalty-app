@@ -11,7 +11,8 @@ import AdminPage from './pages/AdminPage';   // <-- Импорт новой ст
 import TasksPage from './pages/TasksPage';   // <-- Импорт новой страницы
 import { useTelegram } from './hooks/useTelegram';
 import TabBar from './components/TabBar';
-import { UserProvider, useUser } from './context/UserContext';
+import { UserProvider } from './context/UserContextProvider';
+import { useUser } from './hooks/useUser';
 import { fetchUserData } from './api';
 
 function AppContent() {
@@ -38,7 +39,7 @@ function AppContent() {
           setLoading(false);
         });
     }
-  }, [tg, user]);
+  }, [tg, user, setUserData, setLoading]);
 
   return (
     <div className="app">

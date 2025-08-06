@@ -4,6 +4,6 @@ const userController = require('../controllers/user.controller');
 
 // Было: /user/:
 // Стало: /user/:telegramId
-router.get('/user/:telegramId', userController.getById);
+router.get('/user/:telegramId', userController.getUser);
 
 module.exports = router;

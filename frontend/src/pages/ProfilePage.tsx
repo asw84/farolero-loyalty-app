@@ -1,7 +1,7 @@
 // frontend/src/pages/ProfilePage.tsx
 // ВЕРСИЯ С КНОПКАМИ ПРИВЯЗКИ
 
-import { useUser } from '../context/UserContext';
+import { useUser } from '../hooks/useUser';
 
 const ProfilePage = () => {
   const { userData, loading } = useUser();

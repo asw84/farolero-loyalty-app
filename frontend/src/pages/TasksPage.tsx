@@ -1,7 +1,7 @@
 // frontend/src/pages/TasksPage.tsx
 // ПОЛНАЯ ВЕРСИЯ С ПРОВЕРКОЙ ЗАГРУЗКИ
 
-import { useUser } from '../context/UserContext';
+import { useUser } from '../hooks/useUser';
 import { checkSocialSubscription } from '../api';
 
 const TasksPage = () => {

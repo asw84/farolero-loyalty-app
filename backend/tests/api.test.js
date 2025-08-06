@@ -18,7 +18,11 @@ const webhookService = require('../services/webhook.service');
 // Моки для сервисов, чтобы не делать реальные запросы
 jest.mock('../database', () => ({
     initializeDatabase: jest.fn(),
-    findOrCreateUser: jest.fn((id, type) => Promise.resolve({ id: 1, [type]: id, points: 100 })),
+    findUserByTelegramId: jest.fn()
+        .mockResolvedValueOnce(null) // First call for new user
+        .mockResolvedValue({ id: 2, telegram_user_id: '999', points: 100, synced_with_amo: 0 }), // Subsequent calls
+    findOrCreateUser: jest.fn((id, type) => Promise.resolve({ id: 2, [type]: id, points: 100 })),
+    updateUser: jest.fn(() => Promise.resolve()),
     addPoints: jest.fn(() => Promise.resolve()),
 }));
 
@@ -60,6 +64,11 @@ jest.mock('../services/instagram.service', () => ({
 
 jest.mock('../services/vk.oauth.service', () => ({
     handleOAuthCallback: jest.fn(() => ({ success: true, message: 'Аккаунт VK успешно привязан!' })),
+}));
+
+jest.mock('../services/amocrm.service.js', () => ({
+    findContactByTelegramId: jest.fn(() => Promise.resolve(null)),
+    extractPointsFromContact: jest.fn(() => 0),
 }));
 
 const app = express();
