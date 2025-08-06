@@ -1,32 +1,22 @@
 # /Dockerfile
-# ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ ПРАВ ДОСТУПА
+# ВЕРСИЯ "КОПИРУЕМ ГОТОВЫЙ DIST"
 
-# --- СТАДИЯ 1: Сборка Фронтенда ---
-FROM node:16 AS frontend-builder
-WORKDIR /app
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ .
-
-# --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
-# Рекурсивно даем права на исполнение для папки с бинарниками npm
-RUN chmod -R +x node_modules/.bin
-# --------------------------
-
-RUN npm run build
-
-# --- СТАДИЯ 2: Сборка Бэкенда ---
+# --- СТАДИЯ 1: Бэкенд (остается без изменений) ---
 FROM node:18-alpine AS backend-builder
 WORKDIR /app
 COPY backend/package*.json ./
 RUN npm install --omit=dev
 COPY backend/ .
 
-# --- ФИНАЛЬНАЯ СТАДИЯ: Запускаем Бэкенд ---
+# --- ФИНАЛЬНАЯ СТАДИЯ: Запускаем Бэкенд и Фронтенд ---
 FROM node:18-alpine
 WORKDIR /app
+
+# Копируем готовый бэкенд из стадии сборки
 COPY --from=backend-builder /app .
-COPY --from=frontend-builder /app/dist ./public
+
+# Копируем ГОТОВЫЙ ФРОНТЕНД из папки frontend/dist в папку 'public'
+COPY frontend/dist ./public
 
 EXPOSE 3001
 CMD [ "node", "server.js" ]
