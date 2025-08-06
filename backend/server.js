@@ -1,10 +1,12 @@
-// backend/server.js
-// ФИНАЛЬНАЯ ВЕРСИЯ ПОСЛЕ РЕФАКТОРИНГА
+// --- ИЗМЕНЕНИЕ №1: Условная загрузка dotenv ---
+// Загружаем переменные из файла .env ТОЛЬКО в среде разработки.
+// В Docker (production) переменные будут предоставлены через Docker Compose.
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path'); // <-- ДОБАВИТЬ ЭТУ СТРОКУ
 
 // --- ИМПОРТЫ ---
 const walkService = require('./services/walk.service');
@@ -45,6 +47,7 @@ app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 orderController.init(WALK_URLS);
 
 // --- РЕГИСТРАЦИЯ API МАРШРУТОВ ---
+// Бэкенд теперь отвечает ТОЛЬКО на запросы, начинающиеся с /api
 app.use('/api', walkRoutes);
 app.use('/api', userRoutes);
 app.use('/api', orderRoutes);
@@ -56,16 +59,13 @@ app.use('/api', vkRoutes);
 app.use('/api', instagramRoutes);
 app.use('/api', vkOAuthRoutes);
 
-// --- НОВЫЙ БЛОК: РАЗДАЧА ФРОНТЕНДА ---
-// Указываем Express, где лежат собранные файлы фронтенда
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Для всех остальных запросов (которые не /api), отдаем index.html
-// Это нужно для работы React Router
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-// ------------------------------------
+// --- ИЗМЕНЕНИЕ №2: БЛОК РАЗДАЧИ ФРОНТЕНДА УДАЛЕН ---
+// В нашей архитектуре с Docker + Caddy, за раздачу фронтенда отвечает
+// отдельный контейнер с Nginx, а Caddy направляет к нему запросы.
+// Бэкенд должен быть чистым API-сервером и не заниматься раздачей HTML.
+// Это делает архитектуру правильной и чистой.
+
 
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {
