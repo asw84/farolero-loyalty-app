@@ -1,0 +1,10 @@
+# /docker-compose.yml
+services:
+  backend:
+    build: ./backend
+    restart: always
+    ports: ["127.0.0.1:3001:3001"]
+  frontend:
+    build: ./frontend
+    restart: always
+    ports: ["127.0.0.1:8080:80"]
