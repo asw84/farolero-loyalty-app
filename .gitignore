@@ -7,7 +7,7 @@
 
 # production
 /build
-/dist
+
 
 # misc
 .DS_Store
@@ -36,3 +36,6 @@ yarn-error.log*
 # tokens file
 /backend/amocrm/tokens.json
 /backend/.env
+
+CHANGELOG.md
+REFACTOR_CHANGELOG.md

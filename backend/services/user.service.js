@@ -1,30 +1,52 @@
 // backend/services/user.service.js
+// ФИНАЛЬНАЯ ВЕРСИЯ С СИНХРОНИЗАЦИЕЙ
 
-const { findOrCreateUser } = require('../database');
+const amocrmService = require('./amocrm.service');
+const db = require('../database');
 
 async function getUserData(telegramId) {
-    console.log(`[UserService] Запрошены данные для пользователя с Telegram ID: ${telegramId}`);
+    console.log(`[UserService] Запрошены данные для ${telegramId}`);
     try {
-        const user = await findOrCreateUser(String(telegramId), 'telegram_user_id');
+        let user = await db.findUserByTelegramId(telegramId);
 
-        if (!user) {
-            // Эта ситуация маловероятна, так как findOrCreateUser должен всегда возвращать пользователя
-            console.log(`[UserService] ⚠️ Пользователь с Telegram ID ${telegramId} не найден и не может быть создан.`);
-            return null;
+        // Если пользователя нет в нашей БД или он еще не синхронизирован
+        if (!user || !user.synced_with_amo) {
+            console.log(`[UserService] Пользователь ${telegramId} требует синхронизации с AmoCRM.`);
+            const amoContact = await amocrmService.findContactByTelegramId(telegramId);
+            
+            let pointsFromAmo = 0;
+            if (amoContact) {
+                pointsFromAmo = amocrmService.extractPointsFromContact(amoContact);
+                console.log(`[UserService] В AmoCRM найдено ${pointsFromAmo} баллов.`);
+            } else {
+                console.log(`[UserService] Пользователь не найден в AmoCRM, будет создан с 0 баллов.`);
+            }
+
+            if (user) { // Если пользователь уже есть, но не синхронизирован
+                await db.updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
+            } else { // Если пользователя вообще нет
+                // findOrCreateUser создаст его
+                await db.findOrCreateUser(telegramId, 'telegram_user_id');
+                // и мы сразу обновим ему баллы
+                await db.updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
+            }
+            
+            // Перезапрашиваем данные пользователя из нашей БД после обновления
+            user = await db.findUserByTelegramId(telegramId);
         }
 
         const userData = {
             points: user.points,
-            status: 'Стандарт', // В будущем можно будет добавить логику статусов
-            referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}` // Логика реферальной ссылки остается
+            status: 'Стандарт',
+            referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
         };
 
-        console.log(`[UserService] ✅ Пользователь найден. Отправляю данные:`, userData);
+        console.log(`[UserService] ✅ Отправляю данные из локальной БД:`, userData);
         return userData;
 
     } catch (error) {
         console.error('❌ [UserService] Ошибка при получении данных пользователя:', error);
-        throw error; // Передаем ошибку выше, чтобы контроллер мог ее обработать
+        throw error;
     }
 }
 
