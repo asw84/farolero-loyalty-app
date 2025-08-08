@@ -1,10 +1,23 @@
-# /docker-compose.yml
+version: '3.8'
+
 services:
   backend:
     build: ./backend
-    restart: always
-    ports: ["127.0.0.1:3001:3001"]
+    restart: unless-stopped
+    dns: # <-- ДОБАВЛЯЕМ ЭТУ СЕКЦИЮ
+      - 8.8.8.8
+      - 8.8.4.4
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./database_data:/app/database
+    environment:
+      - NODE_ENV=production # <-- Говорим, что это продакшен
+
   frontend:
     build: ./frontend
-    restart: always
-    ports: ["127.0.0.1:8080:80"]
+    restart: unless-stopped
+    ports:
+      - "8080:80"
