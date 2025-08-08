@@ -64,4 +64,9 @@ desktop.ini
 .tmp/
 *.zip
 *.tar
-*.gz
+*.gzbackend/.env
+backend/tokens.json
+amocrm*.json
+**/token.json
+.sqlite
+*.db
