@@ -22,7 +22,7 @@ const ProfilePage = () => {
 
   const handleVkLink = () => {
     // Простое решение: прямая ссылка на VK ID
-    const VK_APP_ID = 54020829;
+    const VK_APP_ID = 54020829; // TODO: заменить на рабочий APP_ID
     const REDIRECT_URI = `${import.meta.env.VITE_API_URL}/api/oauth/vk/callback`;
     const state = `tg:${userData.telegramId}`;
     
