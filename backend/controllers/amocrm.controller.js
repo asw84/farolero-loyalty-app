@@ -4,15 +4,22 @@
 const amocrmClient = require('../amocrm/apiClient');
 
 /**
- * Инициация OAuth авторизации AmoCRM
+ * Контроллер для временной инициализации токенов AmoCRM.
+ * Вызывает функцию, которая обменивает auth_code на access_token и refresh_token.
  */
 async function init(req, res) {
     try {
-        const authUrl = amocrmClient.getAuthUrl();
-        res.redirect(authUrl);
+        // Вызываем основную логику из нашего API клиента
+        await amocrmClient.getInitialToken();
+        
+        // Если все прошло успешно, отправляем позитивный ответ
+        res.send('✅ Токены AmoCRM успешно получены и сохранены. Эндпоинт можно удалить.');
     } catch (error) {
-        console.error('❌ [AMOCRM_INIT_CONTROLLER] Ошибка при создании auth URL:', error);
-        res.status(500).send('Ошибка при создании ссылки авторизации.');
+        // Логируем полную ошибку в консоль сервера для отладки
+        console.error('❌ [AMOCRM_INIT_CONTROLLER] Ошибка при вызове getInitialToken:', error);
+        
+        // Отправляем пользователю сообщение об ошибке
+        res.status(500).send('Ошибка при получении токенов. Проверь консоль бэкенда.');
     }
 }
 
