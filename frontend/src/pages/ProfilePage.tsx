@@ -10,13 +10,14 @@ const ProfilePage = () => {
   const handleInstagramLink = () => {
     // Эти значения должны соответствовать тем, что в вашем Facebook App
     const INSTAGRAM_APP_ID = 'your_instagram_app_id'; // TODO: Вынести в .env.development
-    const REDIRECT_URI = 'http://localhost:3001/api/oauth/instagram/callback';
+    const REDIRECT_URI = `${import.meta.env.VITE_API_URL}/api/oauth/instagram/callback`;
+    const state = `tg:${userData.telegramId}`;
     
     // Формируем ссылку для авторизации
-    const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${INSTAGRAM_APP_ID}&redirect_uri=${REDIRECT_URI}&scope=user_profile&response_type=code`;
+    const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${INSTAGRAM_APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=user_profile&response_type=code&state=${encodeURIComponent(state)}`;
     
     // Открываем ссылку в новом окне
-    window.open(authUrl, '_blank');
+    window.open(authUrl, '_blank', 'width=600,height=600');
   };
 
   const handleVkLink = () => {
