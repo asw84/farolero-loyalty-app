@@ -29,34 +29,8 @@ function saveTokens(tokens) {
     fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
 }
 
-function getAuthUrl() {
-    const params = new URLSearchParams({
-        client_id: config.client_id,
-        redirect_uri: config.redirect_uri,
-        response_type: 'code',
-        state: Math.random().toString(36)
-    });
-    return `${config.base_url}/oauth2/authorize?${params.toString()}`;
-}
-
-async function exchangeCodeForTokens(code) {
-    try {
-        console.log('[AmoCRM] Exchanging code for tokens...');
-        const response = await authApiClient.post('/oauth2/access_token', {
-            client_id: config.client_id,
-            client_secret: config.client_secret,
-            grant_type: 'authorization_code',
-            code: code,
-            redirect_uri: config.redirect_uri
-        });
-        saveTokens(response.data);
-        console.log('[AmoCRM] ✅ Tokens successfully obtained and saved.');
-        return response.data.access_token;
-    } catch (error) {
-        console.error('❌ [AmoCRM] Error exchanging code for tokens:', error.response?.data || error.message);
-        throw error;
-    }
-}
+// Временные функции для получения токенов удалены
+// Основной функционал работы с AmoCRM остается
 
 async function getInitialToken() {
     try {
@@ -170,5 +144,5 @@ async function createLead(name, { pipeline_id, status_id, contact_id, sale }) {
 }
 
 module.exports = {
-    getAuthUrl, exchangeCodeForTokens, getInitialToken, findContactByTelegramId, updateContact, createLead
+    findContactByTelegramId, updateContact, createLead
 };

@@ -54,7 +54,7 @@ app.use('/api', orderRoutes);
 app.use('/api', webhookRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', socialRoutes);
-app.use('/api', amocrmRoutes);
+app.use('/api/amocrm', amocrmRoutes);
 app.use('/api', vkRoutes);
 app.use('/api', instagramRoutes);
 app.use('/api', vkOAuthRoutes);

@@ -1,13 +1,12 @@
 const express = require('express');
 const router = express.Router();
 
-// Импортируем наш новый контроллер
+// Импортируем контроллер AmoCRM
 const amocrmController = require('../controllers/amocrm.controller');
 
-// Маршруты для AmoCRM OAuth
-router.get('/auth', amocrmController.init);         // Инициация авторизации
-router.get('/init', amocrmController.init);         // Алиас для совместимости  
-router.get('/callback', amocrmController.handleCallback); // Callback после авторизации
+// Здесь будут основные маршруты для работы с AmoCRM
+// например: router.get('/contacts', amocrmController.getContacts);
+// router.post('/contacts', amocrmController.createContact);
 
-// Экспортируем роутер, чтобы его можно было подключить в server.js
+// Экспортируем роутер
 module.exports = router;
