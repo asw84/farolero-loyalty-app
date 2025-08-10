@@ -20,11 +20,10 @@ const ProfilePage = () => {
   };
 
   const handleVkLink = () => {
-    const VK_APP_ID = 'your_vk_app_id'; // TODO: Вынести в .env.development
-    const REDIRECT_URI = 'http://localhost:3001/api/oauth/vk/callback';
-    
-    const authUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=page&redirect_uri=${REDIRECT_URI}&scope=offline&response_type=code`;
-    
+    const VK_APP_ID = 54020829; // можно вынести в env, сейчас фиксируем
+    const REDIRECT_URI = `${import.meta.env.VITE_API_URL}/api/oauth/vk/callback`;
+    const state = `tg:${userData.telegramId}`;
+    const authUrl = `https://id.vk.com/authorize?response_type=code&client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${encodeURIComponent(state)}`;
     window.open(authUrl, '_blank');
   };
   // -------------------------------------

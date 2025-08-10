@@ -1,8 +1,8 @@
 // backend/services/vk.oauth.service.js
 
 const axios = require('axios');
-const { linkVkAccount } = require('../database');
-
+const amocrmClient = require('../amocrm/apiClient');
+const { TELEGRAM_ID_FIELD_ID, VK_ID_FIELD_ID } = require('../config');
 const { VK_APP_ID, VK_APP_SECRET, VK_REDIRECT_URI } = process.env;
 
 /**
@@ -14,15 +14,20 @@ const { VK_APP_ID, VK_APP_SECRET, VK_REDIRECT_URI } = process.env;
 async function handleOAuthCallback(code, telegram_user_id) {
     try {
         const { access_token, user_id } = await getAccessToken(code);
-        await linkVkAccount(telegram_user_id, String(user_id));
-
-        console.log(`[VK_OAUTH_SERVICE] ✅ Успешно привязан VK-аккаунт ${user_id} к Telegram ID ${telegram_user_id}`);
+        
+        // Обновляем контакт в AmoCRM: записываем VK ID в кастомное поле
+        const contact = await amocrmClient.findContactByTelegramId(telegram_user_id);
+        if (contact) {
+            await amocrmClient.updateContact(contact.id, { [VK_ID_FIELD_ID]: String(user_id) });
+            console.log(`[VK_OAUTH_SERVICE] ✅ VK ID ${user_id} записан в AmoCRM для Telegram ID ${telegram_user_id}`);
+        } else {
+            console.warn(`[VK_OAUTH_SERVICE] ⚠️ Контакт с Telegram ID ${telegram_user_id} не найден в AmoCRM.`);
+        }
 
         return { success: true, message: 'Аккаунт VK успешно привязан!' };
-
     } catch (error) {
-        console.error('❌ [VK_OAUTH_SERVICE] Ошибка в процессе OAuth:', error.response ? error.response.data : error.message);
-        throw new Error('Не удалось получить данные от VK.');
+        console.error('[VK_OAUTH_SERVICE] ❌ Ошибка при обработке OAuth callback:', error);
+        throw error;
     }
 }
 

@@ -2,23 +2,23 @@
 
 const vkOAuthService = require('../services/vk.oauth.service');
 
-async function handleCallback(req, res) {
-    const { code } = req.query;
-    // TODO: Получить telegram_user_id из сессии или state-параметра
-    const telegram_user_id = '123456789'; // ЗАГЛУШКА
-
-    if (!code) {
-        return res.status(400).send('Ошибка: отсутствует код авторизации.');
-    }
-
+const handleOAuthCallback = async (req, res) => {
     try {
+        const { code, state } = req.query;
+        const telegram_user_id = String(state || '').replace(/^tg:/, '') || '';
+        
+        if (!code || !telegram_user_id) {
+            return res.status(400).send('Ошибка: отсутствует код авторизации или telegramId.');
+        }
+
         const result = await vkOAuthService.handleOAuthCallback(code, telegram_user_id);
-        res.send(result.message);
+        res.json(result);
     } catch (error) {
-        res.status(500).send(error.message);
+        console.error('[VK_OAUTH_CONTROLLER] ❌ Ошибка:', error);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
-}
+};
 
 module.exports = {
-    handleCallback,
+    handleCallback: handleOAuthCallback,
 };
