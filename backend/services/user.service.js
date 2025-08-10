@@ -1,47 +1,84 @@
 // backend/services/user.service.js
-// ФИНАЛЬНАЯ ВЕРСИЯ С СИНХРОНИЗАЦИЕЙ
+// ФИНАЛЬНАЯ ВЕРСИЯ С ПОДДЕРЖКОЙ STORAGE_MODE
 
 const amocrmService = require('./amocrm.service');
 const { findUserByTelegramId, findOrCreateUser, updateUser } = require('../database');
+const { STORAGE_MODE } = require('../config');
 
 async function getUserData(telegramId) {
-    console.log(`[UserService] Запрошены данные для ${telegramId}`);
+    console.log(`[UserService] Запрошены данные для ${telegramId}. Режим хранения: ${STORAGE_MODE}`);
+    
     try {
-        let user = await findUserByTelegramId(telegramId);
-
-        // Если пользователя нет в нашей БД или он еще не синхронизирован
-        if (!user || !user.synced_with_amo) {
-            console.log(`[UserService] Пользователь ${telegramId} требует синхронизации с AmoCRM.`);
+        let userData;
+        
+        if (STORAGE_MODE === 'crm') {
+            // Режим CRM: данные только из AmoCRM
+            console.log(`[UserService] Получаю данные напрямую из AmoCRM`);
             const amoContact = await amocrmService.findContactByTelegramId(telegramId);
             
+            if (amoContact) {
+                const pointsFromAmo = amocrmService.extractPointsFromContact(amoContact);
+                userData = {
+                    points: pointsFromAmo,
+                    status: 'Стандарт',
+                    referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
+                };
+                console.log(`[UserService] ✅ Данные из AmoCRM: ${pointsFromAmo} баллов`);
+            } else {
+                throw new Error(`Пользователь ${telegramId} не найден в AmoCRM`);
+            }
+            
+        } else if (STORAGE_MODE === 'hybrid') {
+            // Гибридный режим: синхронизация AmoCRM -> локальная БД -> отдача из локальной БД
+            console.log(`[UserService] Синхронизация AmoCRM с локальной БД`);
+            let user = await findUserByTelegramId(telegramId);
+            
+            // Всегда синхронизируемся с AmoCRM для актуальности данных
+            const amoContact = await amocrmService.findContactByTelegramId(telegramId);
             let pointsFromAmo = 0;
+            
             if (amoContact) {
                 pointsFromAmo = amocrmService.extractPointsFromContact(amoContact);
-                console.log(`[UserService] В AmoCRM найдено ${pointsFromAmo} баллов.`);
+                console.log(`[UserService] В AmoCRM найдено ${pointsFromAmo} баллов`);
             } else {
-                console.log(`[UserService] Пользователь не найден в AmoCRM, будет создан с 0 баллов.`);
+                console.log(`[UserService] Пользователь не найден в AmoCRM, будет создан с 0 баллов`);
             }
 
-            if (user) { // Если пользователь уже есть, но не синхронизирован
+            if (user) {
+                // Обновляем существующего пользователя
                 await updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
-            } else { // Если пользователя вообще нет
-                // findOrCreateUser создаст его
+            } else {
+                // Создаем нового пользователя
                 await findOrCreateUser(telegramId, 'telegram_user_id');
-                // и мы сразу обновим ему баллы
                 await updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
             }
             
-            // Перезапрашиваем данные пользователя из нашей БД после обновления
+            // Получаем обновленные данные из локальной БД
             user = await findUserByTelegramId(telegramId);
+            userData = {
+                points: user.points,
+                status: 'Стандарт',
+                referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
+            };
+            console.log(`[UserService] ✅ Синхронизировано и отдано из локальной БД: ${user.points} баллов`);
+            
+        } else {
+            // Локальный режим: только локальная БД
+            console.log(`[UserService] Работаю только с локальной БД`);
+            let user = await findUserByTelegramId(telegramId);
+            
+            if (!user) {
+                user = await findOrCreateUser(telegramId, 'telegram_user_id');
+            }
+            
+            userData = {
+                points: user.points,
+                status: 'Стандарт',
+                referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
+            };
+            console.log(`[UserService] ✅ Данные из локальной БД: ${user.points} баллов`);
         }
 
-        const userData = {
-            points: user.points,
-            status: 'Стандарт',
-            referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
-        };
-
-        console.log(`[UserService] ✅ Отправляю данные из локальной БД:`, userData);
         return userData;
 
     } catch (error) {
