@@ -4,8 +4,7 @@ const amocrmClient = require('../amocrm/apiClient');
 const qticketsService = require('../qtickets/qticketsService');
 const walkService = require('./walk.service');
 
-const POINTS_FIELD_ID = process.env.AMO_POINTS_FIELD_ID;
-const QTICKETS_DISCOUNT_ID = process.env.QTICKETS_DISCOUNT_ID;
+const { POINTS_FIELD_ID, QTICKETS_DISCOUNT_ID } = require('../config');
 
 async function createOrder(telegramId, walkId, walkUrls) {
     console.log(`[Order] Получен запрос на создание заказа от telegramId: ${telegramId} для walkId: ${walkId}`);

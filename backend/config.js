@@ -8,3 +8,12 @@ const QTICKETS_DISCOUNT_ID = '51147';
 
 // Storage mode: 'local', 'hybrid', 'crm'
 const STORAGE_MODE = process.env.STORAGE_MODE || 'local';
+
+module.exports = {
+    TELEGRAM_ID_FIELD_ID,
+    POINTS_FIELD_ID,
+    VK_ID_FIELD_ID,
+    INSTAGRAM_ID_FIELD_ID,
+    QTICKETS_DISCOUNT_ID,
+    STORAGE_MODE
+};
