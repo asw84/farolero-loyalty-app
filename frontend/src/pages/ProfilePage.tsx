@@ -1,4 +1,4 @@
-'''// frontend/src/pages/ProfilePage.tsx
+// frontend/src/pages/ProfilePage.tsx
 // ВЕРСИЯ С VK ID SDK
 
 import { useState } from 'react';
@@ -121,4 +121,3 @@ const ProfilePage = () => {
 };
 
 export default ProfilePage;
-''

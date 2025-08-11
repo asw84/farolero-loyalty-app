@@ -113,4 +113,4 @@ async function verifyTokenWithVK(accessToken, expectedUuid) {
 module.exports = {
     verifyAndLinkAccount
 };
-'''
+

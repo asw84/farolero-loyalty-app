@@ -26,6 +26,9 @@ const instagramRoutes = require('./routes/instagram.routes');
 const vkOAuthRoutes = require('./routes/vk.oauth.routes');
 const vkConfigRoutes = require('./routes/vk.config.routes');
 const activityRoutes = require('./routes/activity.routes');
+const oauthRouter = require('./routes/oauth');
+const socialRouter = require('./routes/social');
+const authRouter = require('./routes/auth');
 
 // --- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ---
 const app = express();
@@ -62,6 +65,9 @@ app.use('/api', instagramRoutes);
 app.use('/api', vkOAuthRoutes);
 app.use('/api', vkConfigRoutes);
 app.use('/api', activityRoutes);
+app.use('/api/oauth', oauthRouter);
+app.use('/api/social', socialRouter);
+app.use('/auth', authRouter);
 
 
 // --- ИЗМЕНЕНИЕ №2: БЛОК РАЗДАЧИ ФРОНТЕНДА УДАЛЕН ---
