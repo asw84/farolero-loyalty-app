@@ -3,9 +3,9 @@
 const userService = require('../services/user.service');
 
 async function getUser(req, res) {
-    const { telegramId } = req.params;
+    const { telegramId, referrerId } = req.body;
     try {
-        const userData = await userService.getUserData(telegramId);
+        const userData = await userService.getUserData(telegramId, referrerId);
         if (userData) {
             res.json(userData);
         } else {

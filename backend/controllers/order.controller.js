@@ -10,13 +10,13 @@ function init(urls) {
 }
 
 async function create(req, res) {
-    const { telegramId, walkId } = req.body;
+    const { telegramId, walkId, usePoints } = req.body;
     if (!telegramId || !walkId) {
         return res.status(400).json({ message: 'Необходимы telegramId и walkId.' });
     }
 
     try {
-        const result = await orderService.createOrder(telegramId, walkId, walkUrls);
+        const result = await orderService.createOrder(telegramId, walkId, walkUrls, usePoints);
         res.json(result);
     } catch (error) {
         console.error('❌ [Order] Критическая ошибка при создании заказа:', error);

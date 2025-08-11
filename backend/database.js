@@ -38,8 +38,11 @@ function initializeDatabase() {
             instagram_username TEXT UNIQUE,
             vk_user_id TEXT UNIQUE,
             points INTEGER DEFAULT 0,
+            pending_points_deduction INTEGER DEFAULT 0,
+            referrer_id INTEGER,
             synced_with_amo BOOLEAN DEFAULT 0,
-            registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (referrer_id) REFERENCES users (id)
         );
     `;
     const createActivityTableSql = `
@@ -86,17 +89,43 @@ function dbGet(sql, params = []) {
     });
 }
 
+async function setPendingPointsDeduction(userId, points) {
+    return await dbRun('UPDATE users SET pending_points_deduction = ? WHERE id = ?', [points, userId]);
+}
+
+async function deductPendingPoints(userId) {
+    const db = getDbConnection();
+    return new Promise((resolve, reject) => {
+        db.serialize(async () => {
+            try {
+                await dbRun('BEGIN TRANSACTION;');
+                const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+                if (user && user.pending_points_deduction > 0) {
+                    const pointsToDeduct = user.pending_points_deduction;
+                    await dbRun('UPDATE users SET points = points - ?, pending_points_deduction = 0 WHERE id = ?', [pointsToDeduct, userId]);
+                    await dbRun('INSERT INTO activity (user_id, points_awarded, source, activity_type) VALUES (?, ?, ?, ?)', [userId, -pointsToDeduct, 'qtickets', 'purchase_discount']);
+                }
+                await dbRun('COMMIT;');
+                resolve();
+            } catch (err) {
+                await dbRun('ROLLBACK;');
+                reject(err);
+            }
+        });
+    });
+}
+
 // All subsequent functions should use the Promise helpers
 async function findUserByTelegramId(telegramId) {
     return await dbGet(`SELECT * FROM users WHERE telegram_user_id = ?`, [telegramId]);
 }
 
-async function findOrCreateUser(identifier, source_field) {
+async function findOrCreateUser(identifier, source_field, referrerId = null) {
     let user = await dbGet(`SELECT * FROM users WHERE ${source_field} = ?`, [identifier]);
     if (user) {
         return user;
     }
-    const result = await dbRun(`INSERT INTO users (${source_field}) VALUES (?)`, [identifier]);
+    const result = await dbRun(`INSERT INTO users (${source_field}, referrer_id) VALUES (?, ?)`, [identifier, referrerId]);
     return await dbGet('SELECT * FROM users WHERE id = ?', [result.lastID]);
 }
 
@@ -132,5 +161,7 @@ module.exports = {
     findOrCreateUser,
     updateUser,
     addPoints,
+    setPendingPointsDeduction,
+    deductPendingPoints,
     // ... other exports
 };

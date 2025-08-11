@@ -5,9 +5,15 @@
 const API_BASE_URL = 'https://api.5425685-au70735.twc1.net';
 
 // Функция для загрузки данных пользователя с бэкенда
-export const fetchUserData = async (telegramId: number | string) => {
+export const fetchUserData = async (telegramId: number | string, referrerId: string | null = null) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/user/${telegramId}`);
+    const response = await fetch(`${API_BASE_URL}/api/user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ telegramId, referrerId }),
+    });
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }
@@ -47,14 +53,14 @@ export const fetchWalkById = async (id: string) => {
 };
 
 // Функция создания заказа
-export const createOrder = async (telegramId: number | string, walkId: number | string) => {
+export const createOrder = async (telegramId: number | string, walkId: number | string, usePoints: boolean) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ telegramId, walkId }),
+      body: JSON.stringify({ telegramId, walkId, usePoints }),
     });
     if (!response.ok) {
       const errorData = await response.json();

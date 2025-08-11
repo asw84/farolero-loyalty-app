@@ -3,9 +3,9 @@
 
 const amocrmService = require('./amocrm.service');
 const { findUserByTelegramId, findOrCreateUser, updateUser } = require('../database');
-const { STORAGE_MODE } = require('../config');
+const { STORAGE_MODE, APP_BASE_URL } = require('../config');
 
-async function getUserData(telegramId) {
+async function getUserData(telegramId, referrerId = null) {
     console.log(`[UserService] Запрошены данные для ${telegramId}. Режим хранения: ${STORAGE_MODE}`);
     
     try {
@@ -21,7 +21,7 @@ async function getUserData(telegramId) {
                 userData = {
                     points: pointsFromAmo,
                     status: 'Стандарт',
-                    referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
+                    referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
                 };
                 console.log(`[UserService] ✅ Данные из AmoCRM: ${pointsFromAmo} баллов`);
             } else {
@@ -49,7 +49,7 @@ async function getUserData(telegramId) {
                 await updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
             } else {
                 // Создаем нового пользователя
-                await findOrCreateUser(telegramId, 'telegram_user_id');
+                await findOrCreateUser(telegramId, 'telegram_user_id', referrerId);
                 await updateUser(telegramId, { points: pointsFromAmo, synced_with_amo: 1 });
             }
             
@@ -58,7 +58,7 @@ async function getUserData(telegramId) {
             userData = {
                 points: user.points,
                 status: 'Стандарт',
-                referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
+                referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
             };
             console.log(`[UserService] ✅ Синхронизировано и отдано из локальной БД: ${user.points} баллов`);
             
@@ -68,13 +68,13 @@ async function getUserData(telegramId) {
             let user = await findUserByTelegramId(telegramId);
             
             if (!user) {
-                user = await findOrCreateUser(telegramId, 'telegram_user_id');
+                user = await findOrCreateUser(telegramId, 'telegram_user_id', referrerId);
             }
             
             userData = {
                 points: user.points,
                 status: 'Стандарт',
-                referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
+                referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
             };
             console.log(`[UserService] ✅ Данные из локальной БД: ${user.points} баллов`);
         }

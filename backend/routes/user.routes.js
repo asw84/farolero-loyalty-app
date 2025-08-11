@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user.controller');
 
-// Было: /user/:
-// Стало: /user/:telegramId
-router.get('/user/:telegramId', userController.getUser);
+router.post('/user', userController.getUser);
 
 module.exports = router;

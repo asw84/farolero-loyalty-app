@@ -23,9 +23,16 @@ function AppContent() {
     tg.ready();
     tg.expand();
     const telegramId = user?.id || 5059160861;
+
+    const startParam = tg.initDataUnsafe?.start_param;
+    let referrerId = null;
+    if (startParam && startParam.startsWith('ref_')) {
+      referrerId = startParam.replace('ref_', '');
+    }
+
     if (telegramId) {
       console.log(`[App] Загружаю данные для Telegram ID: ${telegramId}`);
-      fetchUserData(telegramId)
+      fetchUserData(telegramId, referrerId)
         .then(data => {
           if (data) {
             setUserData({ ...data, telegramId: telegramId });

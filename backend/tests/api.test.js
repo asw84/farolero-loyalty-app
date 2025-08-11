@@ -24,13 +24,14 @@ jest.mock('../database', () => ({
     findOrCreateUser: jest.fn((id, type) => Promise.resolve({ id: 2, [type]: id, points: 100 })),
     updateUser: jest.fn(() => Promise.resolve()),
     addPoints: jest.fn(() => Promise.resolve()),
+    setPendingPointsDeduction: jest.fn(() => Promise.resolve()),
+    deductPendingPoints: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../services/walk.service', () => ({
     getAllWalks: jest.fn(() => [{ id: 1, title: 'Test Walk' }]),
-    getWalkById: jest.fn(id => (id == 1 ? { id: 1, title: 'Test Walk' } : null)),
+    getWalkById: jest.fn(id => (id == 1 ? { id: 1, title: 'Test Walk', price: 1000 } : null)),
 }));
-
 
 
 jest.mock('../services/order.service', () => ({
@@ -44,6 +45,9 @@ jest.mock('../services/webhook.service', () => ({
 jest.mock('../services/admin.service', () => ({
     getStats: jest.fn(() => ({ totalUsers: 100 })),
     adjustPoints: jest.fn(() => ({ success: true, newTotalPoints: 200 })),
+    searchUsers: jest.fn(() => ([{ id: 1, telegram_user_id: '123', points: 100 }])),
+    getUserDetails: jest.fn(() => ({ user: { id: 1, telegram_user_id: '123', points: 100 }, activities: [] })),
+    getTopUsers: jest.fn(() => ([{ id: 1, telegram_user_id: '123', points: 100 }])),
 }));
 
 jest.mock('../services/social.service', () => ({
@@ -62,8 +66,9 @@ jest.mock('../services/instagram.service', () => ({
     handleOAuthCallback: jest.fn(() => ({ success: true, message: 'Аккаунт Instagram успешно привязан!' })),
 }));
 
+// Обновленный мок для vk.oauth.service
 jest.mock('../services/vk.oauth.service', () => ({
-    handleOAuthCallback: jest.fn(() => ({ success: true, message: 'Аккаунт VK успешно привязан!' })),
+    verifyAndLinkAccount: jest.fn(() => Promise.resolve({ success: true, message: 'Аккаунт VK ID успешно привязан!' }))
 }));
 
 jest.mock('../services/amocrm.service.js', () => ({
@@ -84,12 +89,22 @@ app.use('/api', orderRoutes);
 app.use('/api', webhookRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', socialRoutes);
-app.use('/api', amocrmRoutes);
+app.use('/api/amocrm', amocrmRoutes);
 app.use('/api', vkRoutes);
 app.use('/api', instagramRoutes);
 app.use('/api', vkOAuthRoutes);
 
 describe('API Endpoints', () => {
+
+    let adminToken = '';
+
+    beforeAll(async () => {
+        // Login as admin to get token
+        const res = await request(app)
+            .post('/api/admin/login')
+            .send({ password: 'admin' }); // Use the password set in .env
+        adminToken = res.body.token;
+    });
 
     // Тесты для Walks API
     describe('Walks API', () => {
@@ -114,14 +129,18 @@ describe('API Endpoints', () => {
 
     // Тесты для User API
     describe('User API', () => {
-        it('GET /api/user/:telegramId - should return user data for a valid ID', async () => {
-            const res = await request(app).get('/api/user/123');
+        it('POST /api/user - should return user data for a valid ID', async () => {
+            const res = await request(app)
+                .post('/api/user')
+                .send({ telegramId: '123' });
             expect(res.statusCode).toEqual(200);
             expect(res.body).toHaveProperty('points', 100);
         });
 
-        it('GET /api/user/:telegramId - should create a new user if not found', async () => {
-            const res = await request(app).get('/api/user/999');
+        it('POST /api/user - should create a new user if not found', async () => {
+            const res = await request(app)
+                .post('/api/user')
+                .send({ telegramId: '999' });
             expect(res.statusCode).toEqual(200);
             expect(res.body).toHaveProperty('points', 100); // Наш мок возвращает 100
         });
@@ -189,7 +208,9 @@ describe('API Endpoints', () => {
     // Тесты для Admin API
     describe('Admin API', () => {
         it('GET /api/admin/stats - should return stats', async () => {
-            const res = await request(app).get('/api/admin/stats');
+            const res = await request(app)
+                .get('/api/admin/stats')
+                .set('Authorization', `Bearer ${adminToken}`);
             expect(res.statusCode).toEqual(200);
             expect(res.body).toHaveProperty('totalUsers', 100);
         });
@@ -197,9 +218,37 @@ describe('API Endpoints', () => {
         it('POST /api/admin/adjust-points - should adjust points', async () => {
             const res = await request(app)
                 .post('/api/admin/adjust-points')
+                .set('Authorization', `Bearer ${adminToken}`)
                 .send({ telegramId: 123, points: 100, reason: 'Test' });
             expect(res.statusCode).toEqual(200);
             expect(res.body).toHaveProperty('newTotalPoints', 200);
+        });
+
+        it('GET /api/admin/users - should search users', async () => {
+            const res = await request(app)
+                .get('/api/admin/users?username=123')
+                .set('Authorization', `Bearer ${adminToken}`);
+            expect(res.statusCode).toEqual(200);
+            expect(res.body).toBeInstanceOf(Array);
+            expect(res.body[0]).toHaveProperty('telegram_user_id', '123');
+        });
+
+        it('GET /api/admin/users/:id - should return user details', async () => {
+            const res = await request(app)
+                .get('/api/admin/users/1')
+                .set('Authorization', `Bearer ${adminToken}`);
+            expect(res.statusCode).toEqual(200);
+            expect(res.body).toHaveProperty('user');
+            expect(res.body.user).toHaveProperty('id', 1);
+        });
+
+        it('GET /api/admin/top-users - should return top users', async () => {
+            const res = await request(app)
+                .get('/api/admin/top-users')
+                .set('Authorization', `Bearer ${adminToken}`);
+            expect(res.statusCode).toEqual(200);
+            expect(res.body).toBeInstanceOf(Array);
+            expect(res.body[0]).toHaveProperty('points');
         });
     });
 
@@ -275,23 +324,33 @@ describe('API Endpoints', () => {
         });
     });
 
-    // Тесты для VK OAuth
-    describe('VK OAuth', () => {
+    // Новые тесты для верификации VK ID
+    describe('VK ID Verification', () => {
         const vkOAuthService = require('../services/vk.oauth.service');
 
-        it('GET /api/oauth/vk/callback - should handle a valid code', async () => {
-            const res = await request(app).get('/api/oauth/vk/callback?code=valid_code');
+        it('POST /api/oauth/vk/verify-auth - should return success for valid data', async () => {
+            const payload = {
+                vkData: { uuid: '12345', token: 'valid_token' },
+                telegramId: '67890'
+            };
+
+            const res = await request(app)
+                .post('/api/oauth/vk/verify-auth')
+                .send(payload);
             
             expect(res.statusCode).toEqual(200);
-            expect(res.text).toBe('Аккаунт VK успешно привязан!');
-            expect(vkOAuthService.handleOAuthCallback).toHaveBeenCalledWith('valid_code', '123456789');
+            expect(res.body.success).toBe(true);
+            expect(vkOAuthService.verifyAndLinkAccount).toHaveBeenCalledWith(payload.vkData, payload.telegramId);
         });
 
-        it('GET /api/oauth/vk/callback - should return 400 if code is missing', async () => {
-            const res = await request(app).get('/api/oauth/vk/callback');
+        it('POST /api/oauth/vk/verify-auth - should return 400 if payload is missing', async () => {
+            const res = await request(app)
+                .post('/api/oauth/vk/verify-auth')
+                .send({ telegramId: '67890' }); // Отсутствует vkData
             
             expect(res.statusCode).toEqual(400);
-            expect(res.text).toContain('Ошибка: отсутствует код авторизации');
+            expect(res.body.success).toBe(false);
+            expect(res.body.error).toContain('Отсутствуют необходимые данные');
         });
     });
 

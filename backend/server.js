@@ -24,6 +24,7 @@ const amocrmRoutes = require('./routes/amocrm.routes');
 const vkRoutes = require('./routes/vk.routes');
 const instagramRoutes = require('./routes/instagram.routes');
 const vkOAuthRoutes = require('./routes/vk.oauth.routes');
+const vkConfigRoutes = require('./routes/vk.config.routes');
 
 // --- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ---
 const app = express();
@@ -58,6 +59,7 @@ app.use('/api/amocrm', amocrmRoutes);
 app.use('/api', vkRoutes);
 app.use('/api', instagramRoutes);
 app.use('/api', vkOAuthRoutes);
+app.use('/api', vkConfigRoutes);
 
 
 // --- ИЗМЕНЕНИЕ №2: БЛОК РАЗДАЧИ ФРОНТЕНДА УДАЛЕН ---

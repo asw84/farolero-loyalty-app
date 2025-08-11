@@ -1,0 +1,37 @@
+# Cursor IDE Configuration for MCP Context7
+
+## MCP Server Configuration
+The project uses Model Context Protocol (MCP) with Context7 server for enhanced AI assistance.
+
+### MCP Context7 Setup
+- **Server**: Context7 MCP server
+- **Protocol**: Model Context Protocol v1.0
+- **Integration**: Backend API endpoints at `/api/mcp/*`
+
+### Key Features
+- User context management
+- Contextual recommendations
+- Real-time context updates
+- AI-powered insights
+
+### Development Guidelines
+- Always check MCP server status before operations
+- Use proper error handling for MCP calls
+- Implement context validation
+- Follow MCP protocol standards
+
+### API Endpoints
+- `POST /api/mcp/initialize` - Initialize MCP server
+- `GET /api/mcp/status` - Check server status
+- `GET /api/mcp/context/:userId` - Get user context
+- `PUT /api/mcp/context/:userId` - Update user context
+- `GET /api/mcp/recommendations/:userId` - Get recommendations
+
+### Environment Variables
+- `CONTEXT7_API_KEY` - Your Context7 API key
+- `CONTEXT7_BASE_URL` - Context7 API base URL
+
+### Testing
+- Test MCP endpoints before deployment
+- Verify context data integrity
+- Check server connectivity

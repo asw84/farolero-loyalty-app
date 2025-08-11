@@ -1,7 +1,5 @@
 // backend/controllers/vk.controller.js
-
 const vkService = require('../services/vk.service');
-
 const VK_CONFIRMATION_TOKEN = process.env.VK_CONFIRMATION_TOKEN;
 const VK_SECRET_KEY = process.env.VK_SECRET_KEY;
 
@@ -12,7 +10,7 @@ async function handleVkCallback(req, res) {
     if (secret !== VK_SECRET_KEY) {
         console.warn('[VK_CONTROLLER] Отклонен запрос с неверным секретным ключом.');
         return res.status(403).send('Forbidden');
-    }
+    }   
 
     // 2. Обработка разных типов событий
     switch (type) {

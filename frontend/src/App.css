@@ -1,59 +1,4 @@
-/* src/index.css */
-
-/* Подключаем кастомные шрифты (добавим их позже) */
-@font-face {
-  font-family: 'Amatic SC';
-  src: url('/fonts/AmaticSC-Bold.ttf') format('truetype');
-  font-weight: bold;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Marck Script';
-  src: url('/fonts/MarckScript-Regular.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
-
-/* Сброс стилей и базовые настройки */
-:root {
-  /* Используем переменные из Telegram для цветов, если они есть */
-  --tg-bg-color: var(--tg-theme-bg-color, #212121);
-  --tg-text-color: var(--tg-theme-text-color, #ffffff);
-  --tg-hint-color: var(--tg-theme-hint-color, #aaaaaa);
-  --tg-link-color: var(--tg-theme-link-color, #8774e1);
-  --tg-button-color: var(--tg-theme-button-color, #5288c1);
-  --tg-button-text-color: var(--tg-theme-button-text-color, #ffffff);
-
-  /* Наши кастомные цвета, если тема не задана */
-  --primary-font: 'Marck Script', cursive;
-  --secondary-font: 'Amatic SC', sans-serif;
-  --accent-color: #d4b254; /* Золотистый цвет для акцентов */
-}
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  background-color: var(--tg-bg-color);
-  background-image: url('./assets/paper-texture.jpg'); /* Наша текстура */
-  background-blend-mode: multiply; /* Смешиваем цвет и текстуру */
-  color: var(--tg-text-color);
-  
-  /* Чтобы приложение занимало всю высоту */
-  height: 100vh;
-  overflow: hidden;
-}
-
-#root {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+/* src/App.css */
 
 /* Базовые стили для приложения */
 .app {
@@ -68,14 +13,27 @@ main {
   padding: 15px;
 }
 
-a {
-  color: var(--tg-link-color);
-  text-decoration: none;
+/* Общий стиль для карточек */
+.card {
+  background-color: var(--card-bg-color);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-h1, h2, h3 {
-  font-family: var(--secondary-font);
-  color: var(--accent-color);
-  text-align: center;
-  letter-spacing: 1.5px;
+/* Общий стиль для кнопок */
+button {
+  background-color: var(--accent-color);
+  color: var(--tg-button-text-color);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: darken(var(--accent-color), 10%); /* Requires a preprocessor or manual calculation */
 }

@@ -1,12 +1,11 @@
 // backend/services/order.service.js
 
-const amocrmClient = require('../amocrm/apiClient');
 const qticketsService = require('../qtickets/qticketsService');
 const walkService = require('./walk.service');
+const { findUserByTelegramId, setPendingPointsDeduction } = require('../database');
+const { QTICKETS_DISCOUNTS } = require('../config');
 
-const { POINTS_FIELD_ID, QTICKETS_DISCOUNT_ID } = require('../config');
-
-async function createOrder(telegramId, walkId, walkUrls) {
+async function createOrder(telegramId, walkId, walkUrls, usePoints) {
     console.log(`[Order] Получен запрос на создание заказа от telegramId: ${telegramId} для walkId: ${walkId}`);
 
     const telegramAppUrl = walkUrls[walkId];
@@ -14,23 +13,34 @@ async function createOrder(telegramId, walkId, walkUrls) {
         throw new Error(`Ссылка для покупки на прогулку ${walkId} не найдена.`);
     }
 
-    const contact = await amocrmClient.findContactByTelegramId(telegramId);
-    if (!contact) {
-        throw new Error('Пользователь не найден в CRM.');
+    const user = await findUserByTelegramId(telegramId);
+    if (!user) {
+        throw new Error('Пользователь не найден в базе данных.');
     }
 
-    const userPoints = contact.custom_fields_values.find(field => field.field_id == POINTS_FIELD_ID)?.values[0]?.value || 0;
-    const walk = walkService.getWalkById(walkId);
-    if (!walk) {
-        throw new Error('Прогулка не найдена');
-    }
-
-    const walkPrice = walk.price || 0;
-    const pointsToUse = Math.min(parseInt(userPoints, 10), parseInt(walkPrice, 10));
     let promoCode = null;
+    let pointsToUse = 0;
 
-    if (pointsToUse > 0) {
-        promoCode = await qticketsService.createSinglePromoCode(QTICKETS_DISCOUNT_ID);
+    if (usePoints) {
+        const userPoints = user.points || 0;
+        const walk = walkService.getWalkById(walkId);
+        if (!walk) {
+            throw new Error('Прогулка не найдена');
+        }
+
+        const walkPrice = walk.price || 0;
+        
+        // Find the best discount the user can afford
+        const affordableDiscounts = QTICKETS_DISCOUNTS
+            .filter(d => userPoints >= d.points && walkPrice >= d.value)
+            .sort((a, b) => b.points - a.points); // Sort by points descending
+
+        if (affordableDiscounts.length > 0) {
+            const bestDiscount = affordableDiscounts[0];
+            promoCode = await qticketsService.createSinglePromoCode(bestDiscount.discountId);
+            pointsToUse = bestDiscount.points;
+            await setPendingPointsDeduction(user.id, pointsToUse);
+        }
     }
 
     const finalUrl = new URL(telegramAppUrl);
@@ -41,7 +51,7 @@ async function createOrder(telegramId, walkId, walkUrls) {
     }
 
     console.log(`[Order] ✅ Заказ успешно сформирован. Отправляю ссылку: ${finalUrl.toString()}`);
-    return { orderUrl: finalUrl.toString() };
+    return { orderUrl: finalUrl.toString(), pointsToUse };
 }
 
 module.exports = {

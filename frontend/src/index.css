@@ -15,20 +15,21 @@
 }
 
 :root {
-  --tg-bg-color: var(--tg-theme-bg-color, #282420); /* Сделаем чуть теплее */
-  --tg-text-color: var(--tg-theme-text-color, #e0e0e0); /* Чуть мягче белого */
-  --tg-hint-color: var(--tg-theme-hint-color, #a0a0a0);
-  --tg-link-color: var(--tg-theme-link-color, #d4b254);
-  --tg-button-color: var(--tg-theme-button-color, #d4b254);
-  --tg-button-text-color: var(--tg-theme-button-text-color, #282420);
+  --tg-bg-color: #12182B; /* Глубокий темно-синий */
+  --tg-text-color: #FFFFFF; /* Белый */
+  --tg-hint-color: #a0a0a0;
+  --tg-link-color: #F4B942; /* Золотисто-янтарный */
+  --tg-button-color: #F4B942; /* Золотисто-янтарный */
+  --tg-button-text-color: #12182B; /* Темно-синий для текста на кнопках */
 
   /* Шрифты */
-  --font-header: 'Amatic SC', sans-serif; /* Для больших заголовков (H1) */
-  --font-title: 'Marck Script', cursive;  /* Для заголовков карточек (H3) */
-  --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* Системный шрифт для текста */
+  --font-header: 'Lora', serif; /* Пример serif шрифта */
+  --font-title: 'Playfair Display', serif;  /* Пример serif шрифта */
+  --font-main: 'Inter', sans-serif; /* Пример sans-serif шрифта */
 
   /* Цвета */
-  --accent-color: #d4b254; /* Золотой */
+  --accent-color: #F4B942; /* Золотисто-янтарный */
+  --card-bg-color: #1B2138; /* Чуть светлее фона */
   --text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7); /* Тень для текста */
 }
 
@@ -39,8 +40,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 
   background-color: var(--tg-bg-color);
-  background-image: url('./assets/paper-texture.jpg');
-  background-blend-mode: multiply;
+  background-image: none; /* Удаляем фоновое изображение */
+  background-blend-mode: normal;
   color: var(--tg-text-color);
   
   height: 100vh;
@@ -76,9 +77,10 @@ h1 {
   margin-bottom: 20px;
 }
 
+/* Update h3 to use the new font-title variable */
 h3 {
   font-family: var(--font-title);
-  color: white;
+  color: var(--tg-text-color); /* Use white text color */
   text-shadow: var(--text-shadow);
 }
 

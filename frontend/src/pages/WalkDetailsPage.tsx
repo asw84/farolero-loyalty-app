@@ -21,7 +21,8 @@ const WalkDetailsPage = () => {
   const navigate = useNavigate();
   const { tg } = useTelegram();
   const { userData, loading: userLoading } = useUser();
-  const { telegramId } = userData;
+  const { telegramId, points } = userData;
+  const [usePoints, setUsePoints] = useState(false);
 
   const [walk, setWalk] = useState<WalkDetails | null>(null);
   const [walkLoading, setWalkLoading] = useState(true);
@@ -42,7 +43,7 @@ const WalkDetailsPage = () => {
       const currentWalk = walkRef.current;
       if (!currentWalk || !telegramId || !id) return;
       tg.MainButton.showProgress();
-      const orderResponse = await createOrder(telegramId, id);
+      const orderResponse = await createOrder(telegramId, id, usePoints);
       tg.MainButton.hideProgress();
       if (orderResponse && orderResponse.orderUrl) {
         tg.openLink(orderResponse.orderUrl);
@@ -67,19 +68,20 @@ const WalkDetailsPage = () => {
       tg.MainButton.hide(); // <-- Прячем кнопку ТОЛЬКО при уходе со страницы
       tg.BackButton.hide();
     };
-  }, [telegramId, tg, navigate, id]); // Убираем walk из зависимостей здесь
+  }, [telegramId, tg, navigate, id, usePoints]); // Убираем walk из зависимостей здесь
 
   // --- НОВЫЙ, ОТДЕЛЬНЫЙ ЭФФЕКТ ТОЛЬКО ДЛЯ КНОПКИ ---
   // Он будет следить за состоянием и принимать финальное решение
   useEffect(() => {
     if (walk && telegramId) {
-      tg.MainButton.setText(`Купить за ${walk.price} руб.`);
-      tg.MainButton.show();
+        const price = usePoints ? Math.max(0, walk.price - (points || 0)) : walk.price;
+        tg.MainButton.setText(`Купить за ${price} руб.`);
+        tg.MainButton.show();
     } else {
       // На всякий случай прячем, если что-то пошло не так
       tg.MainButton.hide();
     }
-  }, [walk, telegramId, tg.MainButton]);
+  }, [walk, telegramId, tg.MainButton, usePoints, points]);
   // ------------------------------------------------
 
   if (walkLoading || userLoading) {
@@ -96,6 +98,13 @@ const WalkDetailsPage = () => {
       <p><strong>Длительность:</strong> {walk.duration}</p>
       <hr />
       <p>{walk.description}</p>
+      <hr />
+      <div>
+        <label>
+          <input type="checkbox" checked={usePoints} onChange={(e) => setUsePoints(e.target.checked)} />
+          Использовать {points} баллов для скидки
+        </label>
+      </div>
     </div>
   );
 };

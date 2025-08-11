@@ -1,7 +1,8 @@
 // backend/services/webhook.service.js
 
 const amocrmClient = require('../amocrm/apiClient');
-const { findOrCreateUser, addPoints } = require('../database');
+const { findOrCreateUser, addPoints, deductPendingPoints } = require('../database');
+const { POINTS_FOR_REFERRAL_PURCHASE } = require('../config');
 
 const POINTS_FOR_PURCHASE = 100;
 const PIPELINE_ID = 857311; // Эти значения тоже стоит вынести в .env
@@ -43,6 +44,18 @@ async function handleSuccessfulPayment(orderData) {
         // Начисляем баллы через нашу новую систему
         const user = await findOrCreateUser(String(telegramId), 'telegram_user_id');
         
+        // Deduct points if they were used for a discount
+        await deductPendingPoints(user.id);
+
+        // Award points to the referrer if exists
+        if (user.referrer_id) {
+            const referrer = await findOrCreateUser(user.referrer_id, 'id'); // Assuming findOrCreateUser can find by ID
+            if (referrer) {
+                await addPoints(referrer.id, POINTS_FOR_REFERRAL_PURCHASE, 'referral', 'purchase_referral');
+                console.log(`[WebhookService] ✅ Начислено ${POINTS_FOR_REFERRAL_PURCHASE} баллов рефереру ${referrer.telegram_user_id || referrer.id} за покупку.`);
+            }
+        }
+
         const DELAY_IN_MILLISECONDS = 5 * 60 * 1000;
         console.log(`[WebhookService] Планирую начисление ${POINTS_FOR_PURCHASE} баллов для ${telegramId} через 5 минут.`);
         
