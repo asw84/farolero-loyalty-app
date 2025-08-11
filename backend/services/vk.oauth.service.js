@@ -1,4 +1,4 @@
-'''// backend/services/vk.oauth.service.js
+// backend/services/vk.oauth.service.js
 const axios = require('axios');
 const amocrmClient = require('../amocrm/apiClient');
 const { VK_ID_FIELD_ID } = require('../config');
