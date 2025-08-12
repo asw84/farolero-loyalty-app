@@ -20,3 +20,6 @@ services:
     restart: unless-stopped
     ports:
       - "8080:80"
+    environment:
+      - VITE_VK_APP_ID=54020028
+      - VITE_API_URL=https://api.5425685-au70735.twc1.net
