@@ -1,5 +1,5 @@
 // backend/amocrm/apiClient.js
-// FINAL STABLE VERSION
+// FINAL STABLE VERSION with improved token auto-refresh
 
 const axios = require('axios');
 const fs = require('fs');
@@ -16,12 +16,15 @@ const { TELEGRAM_ID_FIELD_ID } = require('../config');
 const authApiClient = axios.create({ baseURL: config.base_url });
 const apiClient = axios.create({ baseURL: config.base_url });
 
+// Глобальное хранение токенов в памяти
+let tokens = getTokens();
+
 function getTokens() {
     if (fs.existsSync(TOKENS_PATH)) {
-        const fileContent = fs.readFileSync(TOKENS_PATH, 'utf-8');
-        if (fileContent) return JSON.parse(fileContent);
+        const content = fs.readFileSync(TOKENS_PATH, 'utf-8');
+        if (content) return JSON.parse(content);
     }
-    return null;
+    return { access_token: '', refresh_token: '', created_at: 0, expires_in: 0 };
 }
 
 function saveTokens(tokens) {
@@ -29,52 +32,76 @@ function saveTokens(tokens) {
     fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
 }
 
-// Временные функции для получения токенов удалены
-// Основной функционал работы с AmoCRM остается
+function isTokenExpired(tokens) {
+    const now = Math.floor(Date.now() / 1000);
+    return now > (tokens.created_at + tokens.expires_in - 60); // за 60 сек до истечения
+}
+
+async function refreshTokens() {
+    try {
+        console.log('[AMO] 🔄 Tokens refreshing...');
+        const response = await authApiClient.post('/oauth2/access_token', {
+            client_id: config.client_id,
+            client_secret: config.client_secret,
+            grant_type: 'refresh_token',
+            refresh_token: tokens.refresh_token,
+            redirect_uri: config.redirect_uri
+        });
+
+        tokens = {
+            access_token: response.data.access_token,
+            refresh_token: response.data.refresh_token,
+            expires_in: response.data.expires_in,
+            created_at: Math.floor(Date.now() / 1000)
+        };
+        saveTokens(tokens);
+        console.log('[AMO] ✅ Tokens refreshed successfully');
+        return tokens.access_token;
+    } catch (err) {
+        console.error('[AMO] ❌ Failed to refresh tokens', err.response?.data || err.message);
+        throw err;
+    }
+}
 
 async function getInitialToken() {
     try {
-        console.log('[AmoCRM] Attempting to get initial token...');
+        console.log('[AMO] 🔑 Attempting to get initial token...');
         const response = await authApiClient.post('/oauth2/access_token', {
             client_id: config.client_id, client_secret: config.client_secret,
             grant_type: 'authorization_code', code: config.auth_code,
             redirect_uri: config.redirect_uri
         });
-        saveTokens(response.data);
-        console.log('[AmoCRM] ✅ Initial token successfully retrieved.');
-        return response.data.access_token;
+        tokens = {
+            access_token: response.data.access_token,
+            refresh_token: response.data.refresh_token,
+            expires_in: response.data.expires_in,
+            created_at: Math.floor(Date.now() / 1000)
+        };
+        saveTokens(tokens);
+        console.log('[AMO] ✅ Initial token successfully retrieved.');
+        return tokens.access_token;
     } catch (error) {
-        console.error('❌ [AmoCRM] Error getting initial token:', error.response?.data || error.message);
-        throw error;
-    }
-}
-
-async function refreshToken(tokens) {
-    try {
-        console.log('[AmoCRM] Refreshing token...');
-        const response = await authApiClient.post('/oauth2/access_token', {
-            client_id: config.client_id, client_secret: config.client_secret,
-            grant_type: 'refresh_token', refresh_token: tokens.refresh_token,
-            redirect_uri: config.redirect_uri
-        });
-        saveTokens(response.data);
-        console.log('[AmoCRM] ✅ Token successfully refreshed.');
-        return response.data.access_token;
-    } catch (error) {
-        console.error('❌ [AmoCRM] Error refreshing token:', error.response?.data || error.message);
+        console.error('❌ [AMO] Error getting initial token:', error.response?.data || error.message);
         throw error;
     }
 }
 
 apiClient.interceptors.request.use(async (axiosConfig) => {
-    let tokens = getTokens();
-    if (!tokens || !tokens.access_token) {
-        return Promise.reject(new Error('Access tokens not found.'));
+    if (!tokens.access_token) {
+        try {
+            await getInitialToken();
+        } catch (error) {
+            return Promise.reject(new Error('Failed to get initial token.'));
+        }
     }
-    const tokenExpiresAt = tokens.created_at + tokens.expires_in;
-    if (Date.now() / 1000 > tokenExpiresAt - 60) {
-        const newAccessToken = await refreshToken(tokens);
-        axiosConfig.headers['Authorization'] = `Bearer ${newAccessToken}`;
+    
+    if (isTokenExpired(tokens)) {
+        try {
+            const newAccessToken = await refreshTokens();
+            axiosConfig.headers['Authorization'] = `Bearer ${newAccessToken}`;
+        } catch (error) {
+            return Promise.reject(new Error('Failed to refresh token.'));
+        }
     } else {
         axiosConfig.headers['Authorization'] = `Bearer ${tokens.access_token}`;
     }
@@ -143,6 +170,26 @@ async function createLead(name, { pipeline_id, status_id, contact_id, sale }) {
     }
 }
 
+async function getAuthorizedClient() {
+    if (!tokens.access_token || isTokenExpired(tokens)) {
+        if (!tokens.refresh_token) {
+            await getInitialToken();
+        } else {
+            await refreshTokens();
+        }
+    }
+
+    return axios.create({
+        baseURL: config.base_url,
+        headers: {
+            Authorization: `Bearer ${tokens.access_token}`
+        }
+    });
+}
+
 module.exports = {
-    findContactByTelegramId, updateContact, createLead
+    findContactByTelegramId,
+    updateContact,
+    createLead,
+    getAuthorizedClient
 };
