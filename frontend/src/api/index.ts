@@ -139,7 +139,7 @@ export const testAmoCRMConnection = async () => {
 // Функция для получения контакта из AmoCRM по Telegram ID
 export const getAmoCRMContact = async (telegramId: number | string) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/amocrm/contact/${telegramId}`);
+    const response = await fetch(`${API_BASE_URL}/api/amocrm/contacts/search?telegramId=${telegramId}`);
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }

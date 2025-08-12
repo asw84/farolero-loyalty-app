@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { api } from '../api';
+import { useState } from 'react';
+import axios from 'axios';
 
 interface VKActionsProps {
   vkId?: number;
   contactId?: number;
 }
 
-export function VKActions({ vkId, contactId }: VKActionsProps) {
+export function VKActions({ vkId }: VKActionsProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
@@ -27,16 +27,17 @@ export function VKActions({ vkId, contactId }: VKActionsProps) {
     setResult(null);
 
     try {
-      const { data } = await api.post('/api/social/vk/verify', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.5425685-au70735.twc1.net';
+      const response = await axios.post(`${API_BASE_URL}/api/social/vk/verify`, {
         action,
         target: { ownerId, postId }
         // user данные теперь получаются из req.user через middleware
       });
 
-      if (data.ok) {
-        setResult(`✅ ${data.message}`);
+      if (response.data.ok) {
+        setResult(`✅ ${response.data.message}`);
       } else {
-        setResult(`❌ ${data.message}`);
+        setResult(`❌ ${response.data.message}`);
       }
     } catch (error: any) {
       console.error('Verification error:', error);
