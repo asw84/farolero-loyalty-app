@@ -2,7 +2,7 @@
 // ВЕРСИЯ С ОТЛАДКОЙ
 
 const amocrmClient = require('../amocrm/apiClient');
-const { POINTS_FIELD_ID } = require('../config');
+const { POINTS_FIELD_ID, TELEGRAM_ID_FIELD_ID, VK_ID_FIELD_ID } = require('../config');
 
 async function findContactByTelegramId(telegramId) {
     const contact = await amocrmClient.findContactByTelegramId(telegramId);
@@ -11,7 +11,7 @@ async function findContactByTelegramId(telegramId) {
     if (contact) {
         console.log('--- ПОЛНЫЙ ОБЪЕКТ КОНТАКТА ИЗ AMO ---');
         // Мы используем JSON.stringify, чтобы увидеть всю вложенную структуру
-        console.log(JSON.stringify(contact, null, 2)); 
+        console.log(JSON.stringify(contact, null, 2));
         console.log('------------------------------------');
     }
     // ------------------------------------
@@ -33,7 +33,7 @@ function extractPointsFromContact(contact) {
     });
     
     // Ищем поле с нужным ID (сравниваем и как строку, и как число)
-    const pointsField = contact.custom_fields_values.find(field => 
+    const pointsField = contact.custom_fields_values.find(field =>
         String(field.field_id) === String(POINTS_FIELD_ID)
     );
     
@@ -47,7 +47,60 @@ function extractPointsFromContact(contact) {
     }
 }
 
+async function findByTelegramId(telegramId) {
+    return await findContactByTelegramId(telegramId);
+}
+
+async function getCustomField(contactId, fieldName) {
+    try {
+        // Получаем контакт по ID
+        const response = await amocrmClient.getAuthorizedClient().get(`/api/v4/contacts/${contactId}`);
+        const contact = response.data;
+        
+        if (!contact || !contact.custom_fields_values) {
+            console.log(`[AmoCRM] ❌ Контакт не имеет custom_fields_values`);
+            return null;
+        }
+        
+        // Определяем ID поля по имени
+        let fieldId;
+        switch (fieldName) {
+            case 'VK_ID_FIELD_ID':
+                fieldId = VK_ID_FIELD_ID;
+                break;
+            case 'TELEGRAM_ID_FIELD_ID':
+                fieldId = TELEGRAM_ID_FIELD_ID;
+                break;
+            case 'POINTS_FIELD_ID':
+                fieldId = POINTS_FIELD_ID;
+                break;
+            default:
+                console.log(`[AmoCRM] ❌ Неизвестное поле: ${fieldName}`);
+                return null;
+        }
+        
+        // Ищем поле с нужным ID
+        const field = contact.custom_fields_values.find(f =>
+            String(f.field_id) === String(fieldId)
+        );
+        
+        if (field) {
+            const value = field.values?.[0]?.value;
+            console.log(`[AmoCRM] ✅ Найдено поле ${fieldName}: ${value}`);
+            return value;
+        } else {
+            console.log(`[AmoCRM] ❌ Поле ${fieldName} не найдено!`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`[AmoCRM] ❌ Ошибка при получении поля ${fieldName}:`, error);
+        return null;
+    }
+}
+
 module.exports = {
     findContactByTelegramId,
     extractPointsFromContact,
+    findByTelegramId,
+    getCustomField,
 };

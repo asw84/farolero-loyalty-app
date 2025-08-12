@@ -4,10 +4,11 @@ const router = express.Router();
 // Импортируем контроллер AmoCRM
 const amocrmController = require('../controllers/amocrm.controller');
 
-// Здесь будут основные маршруты для работы с AmoCRM
-// например: router.get('/contacts', amocrmController.getContacts);
-// router.post('/contacts', amocrmController.createContact);
+// Маршруты для работы с AmoCRM
 router.get('/init', amocrmController.init);
+router.get('/callback', amocrmController.callback);
+router.get('/test', amocrmController.testConnection);
+router.get('/contact/:telegramId', amocrmController.getContactByTelegramId);
 
 // Экспортируем роутер
 module.exports = router;

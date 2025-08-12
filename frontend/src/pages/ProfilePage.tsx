@@ -4,11 +4,15 @@
 import { useState } from 'react';
 import { useUser } from '../hooks/useUser';
 import VKIDAuth from '../components/VKIDAuth';
+import { testAmoCRMConnection, getAmoCRMContact } from '../api';
 
 const ProfilePage = () => {
   const { userData, loading } = useUser();
   const [vkAuthStatus, setVkAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [vkAuthMessage, setVkAuthMessage] = useState('');
+  const [amocrmStatus, setAmocrmStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [amocrmMessage, setAmocrmMessage] = useState('');
+  const [amocrmContact, setAmocrmContact] = useState<any>(null);
 
   // --- Логика для Instagram OAuth (оставляем как есть) ---
   const handleInstagramLink = () => {
@@ -66,6 +70,54 @@ const ProfilePage = () => {
     setVkAuthMessage(`Ошибка: ${error}`);
   };
 
+  // --- Обработчики для AmoCRM ---
+  const handleTestAmoCRM = async () => {
+    setAmocrmStatus('loading');
+    setAmocrmMessage('Проверка подключения к AmoCRM...');
+    
+    try {
+      const result = await testAmoCRMConnection();
+      
+      if (result.success) {
+        setAmocrmStatus('success');
+        setAmocrmMessage(`✅ Подключение успешно! Найдено ${result.usersCount} пользователей`);
+      } else {
+        setAmocrmStatus('error');
+        setAmocrmMessage(`❌ Ошибка: ${result.message}`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      setAmocrmStatus('error');
+      setAmocrmMessage(`❌ Ошибка: ${errorMessage}`);
+    }
+  };
+
+  const handleGetAmoCRMContact = async () => {
+    if (!userData?.telegramId) return;
+    
+    setAmocrmStatus('loading');
+    setAmocrmMessage('Поиск контакта в AmoCRM...');
+    
+    try {
+      const result = await getAmoCRMContact(userData.telegramId);
+      
+      if (result.success) {
+        setAmocrmStatus('success');
+        setAmocrmContact(result.contact);
+        setAmocrmMessage(`✅ Найден контакт: ${result.contact.name} (ID: ${result.contact.id}), баллов: ${result.contact.points}`);
+      } else {
+        setAmocrmStatus('error');
+        setAmocrmMessage(`❌ Ошибка: ${result.message}`);
+        setAmocrmContact(null);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      setAmocrmStatus('error');
+      setAmocrmMessage(`❌ Ошибка: ${errorMessage}`);
+      setAmocrmContact(null);
+    }
+  };
+
   if (loading) {
     return <div>Загрузка профиля...</div>;
   }
@@ -108,8 +160,47 @@ const ProfilePage = () => {
           <VKIDAuth
             onSuccess={handleVKIDSuccess}
             onError={handleVKIDError}
-            telegramId={userData.telegramId}
+            telegramId={Number(userData.telegramId) || 0}
           />
+        )}
+      </div>
+
+      <hr/>
+      
+      {/* AmoCRM тестирование */}
+      <h3>Интеграция с AmoCRM</h3>
+      <div style={{ marginBottom: '20px' }}>
+        <h4>Тестирование подключения</h4>
+        <button onClick={handleTestAmoCRM} style={{ marginRight: '10px' }}>
+          Тестировать подключение
+        </button>
+        <button onClick={handleGetAmoCRMContact}>
+          Найти мой контакт
+        </button>
+        
+        {amocrmStatus === 'loading' && (
+          <div style={{ color: 'blue', marginBottom: '10px', marginTop: '10px' }}>
+            {amocrmMessage}
+          </div>
+        )}
+        {amocrmStatus === 'success' && (
+          <div style={{ color: 'green', marginBottom: '10px', marginTop: '10px' }}>
+            {amocrmMessage}
+          </div>
+        )}
+        {amocrmStatus === 'error' && (
+          <div style={{ color: 'red', marginBottom: '10px', marginTop: '10px' }}>
+            {amocrmMessage}
+          </div>
+        )}
+        
+        {amocrmContact && (
+          <div style={{ marginTop: '10px', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}>
+            <h4>Информация о контакте из AmoCRM:</h4>
+            <p><strong>ID:</strong> {amocrmContact.id}</p>
+            <p><strong>Имя:</strong> {amocrmContact.name}</p>
+            <p><strong>Баллы:</strong> {amocrmContact.points}</p>
+          </div>
         )}
       </div>
 

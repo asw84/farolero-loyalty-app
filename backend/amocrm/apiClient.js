@@ -86,28 +86,82 @@ async function getInitialToken() {
     }
 }
 
+function getAuthUrl() {
+    const { client_id, redirect_uri, base_url } = config;
+    return `${base_url}/oauth2/authorize?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=code&mode=popup`;
+}
+
+async function exchangeCodeForTokens(code) {
+    try {
+        console.log('[AMO] 🔑 Exchanging authorization code for tokens...');
+        const response = await authApiClient.post('/oauth2/access_token', {
+            client_id: config.client_id,
+            client_secret: config.client_secret,
+            grant_type: 'authorization_code',
+            code: code,
+            redirect_uri: config.redirect_uri
+        });
+
+        tokens = {
+            access_token: response.data.access_token,
+            refresh_token: response.data.refresh_token,
+            expires_in: response.data.expires_in,
+            created_at: Math.floor(Date.now() / 1000)
+        };
+        saveTokens(tokens);
+        console.log('[AMO] ✅ Tokens successfully obtained and saved');
+        return tokens;
+    } catch (error) {
+        console.error('❌ [AMO] Error exchanging code for tokens:', error.response?.data || error.message);
+        throw error;
+    }
+}
+
 apiClient.interceptors.request.use(async (axiosConfig) => {
+    console.log(`[AMO] 🔑 Making request to: ${axiosConfig.url}`);
+    
     if (!tokens.access_token) {
+        console.log('[AMO] ⚠️ No access token found, getting initial token...');
         try {
             await getInitialToken();
         } catch (error) {
+            console.error('[AMO] ❌ Failed to get initial token:', error.message);
             return Promise.reject(new Error('Failed to get initial token.'));
         }
     }
     
+    const tokenExpirationTime = tokens.created_at + tokens.expires_in;
+    const currentTime = Math.floor(Date.now() / 1000);
+    console.log(`[AMO] 📅 Token expires at: ${new Date(tokenExpirationTime * 1000).toISOString()}, current time: ${new Date(currentTime * 1000).toISOString()}`);
+    
     if (isTokenExpired(tokens)) {
+        console.log('[AMO] 🔄 Token expired, refreshing...');
         try {
             const newAccessToken = await refreshTokens();
             axiosConfig.headers['Authorization'] = `Bearer ${newAccessToken}`;
+            console.log('[AMO] ✅ Token refreshed successfully');
         } catch (error) {
+            console.error('[AMO] ❌ Failed to refresh token:', error.message);
             return Promise.reject(new Error('Failed to refresh token.'));
         }
     } else {
         axiosConfig.headers['Authorization'] = `Bearer ${tokens.access_token}`;
+        console.log('[AMO] ✅ Using existing valid token');
     }
     return axiosConfig;
 });
 
+// Добавляем интерцептор для ответов, чтобы логировать ошибки
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log(`[AMO] ✅ Successful response from ${response.config.url}:`, response.status);
+    return response;
+  },
+  (error) => {
+    console.error(`[AMO] ❌ Error response from ${error.config?.url}:`, error.response?.status, error.response?.data);
+    return Promise.reject(error);
+  }
+);
 
 // The findContactByTelegramId function should use the robust hybrid search method
 async function findContactByTelegramId(telegramId) {
@@ -191,5 +245,8 @@ module.exports = {
     findContactByTelegramId,
     updateContact,
     createLead,
-    getAuthorizedClient
+    getAuthorizedClient,
+    getInitialToken,
+    getAuthUrl,
+    exchangeCodeForTokens
 };

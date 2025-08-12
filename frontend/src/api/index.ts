@@ -121,3 +121,31 @@ export const checkSocialSubscription = async (telegramId: number | string, socia
     return { success: false, message: 'Ошибка сети. Не удалось выполнить проверку.' };
   }
 };
+
+// Функция для тестирования подключения к AmoCRM
+export const testAmoCRMConnection = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/amocrm/test`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to test AmoCRM connection:', error);
+    return { success: false, message: 'Ошибка сети. Не удалось проверить подключение к AmoCRM.' };
+  }
+};
+
+// Функция для получения контакта из AmoCRM по Telegram ID
+export const getAmoCRMContact = async (telegramId: number | string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/amocrm/contact/${telegramId}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to get AmoCRM contact:', error);
+    return { success: false, message: 'Ошибка сети. Не удалось получить контакт из AmoCRM.' };
+  }
+};
