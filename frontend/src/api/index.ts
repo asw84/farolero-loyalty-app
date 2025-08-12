@@ -139,11 +139,19 @@ export const testAmoCRMConnection = async () => {
 // Функция для получения контакта из AmoCRM по Telegram ID
 export const getAmoCRMContact = async (telegramId: number | string) => {
   try {
+    console.log('Запрос к AmoCRM API для telegramId:', telegramId);
     const response = await fetch(`${API_BASE_URL}/api/amocrm/contacts/search?telegramId=${telegramId}`);
+    console.log('Статус ответа:', response.status);
+    
     if (!response.ok) {
-      throw new Error('Network response was not ok');
+      const errorData = await response.text();
+      console.error('Ошибка ответа от AmoCRM API:', errorData);
+      throw new Error(`Network response was not ok: ${response.status}`);
     }
-    return await response.json();
+    
+    const data = await response.json();
+    console.log('Данные от AmoCRM API:', data);
+    return data;
   } catch (error) {
     console.error('Failed to get AmoCRM contact:', error);
     return { success: false, message: 'Ошибка сети. Не удалось получить контакт из AmoCRM.' };

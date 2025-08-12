@@ -93,13 +93,19 @@ const ProfilePage = () => {
   };
 
   const handleGetAmoCRMContact = async () => {
-    if (!userData?.telegramId) return;
+    if (!userData?.telegramId) {
+      setAmocrmStatus('error');
+      setAmocrmMessage('❌ Ошибка: Telegram ID не найден');
+      return;
+    }
     
     setAmocrmStatus('loading');
     setAmocrmMessage('Поиск контакта в AmoCRM...');
+    console.log('Поиск контакта для Telegram ID:', userData.telegramId);
     
     try {
       const result = await getAmoCRMContact(userData.telegramId);
+      console.log('Результат от AmoCRM:', result);
       
       if (result.success) {
         setAmocrmStatus('success');
@@ -112,6 +118,7 @@ const ProfilePage = () => {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      console.error('Ошибка при получении контакта из AmoCRM:', error);
       setAmocrmStatus('error');
       setAmocrmMessage(`❌ Ошибка: ${errorMessage}`);
       setAmocrmContact(null);
