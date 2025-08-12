@@ -66,6 +66,29 @@ async function refreshTokens() {
 async function getInitialToken() {
     try {
         console.log('[AMO] 🔑 Attempting to get initial token...');
+        
+        // Проверяем, есть ли у нас валидные токены
+        if (tokens.access_token && !isTokenExpired(tokens)) {
+            console.log('[AMO] ✅ Using existing valid token');
+            return tokens.access_token;
+        }
+        
+        // Если есть refresh_token, пробуем обновить токен
+        if (tokens.refresh_token) {
+            try {
+                console.log('[AMO] 🔄 Trying to refresh token...');
+                return await refreshTokens();
+            } catch (refreshError) {
+                console.log('[AMO] ⚠️ Failed to refresh token, need re-authorization');
+                throw new Error('Требуется повторная авторизация. Пожалуйста, перейдите на /api/amocrm/init для получения кода авторизации.');
+            }
+        }
+        
+        // Если нет auth_code в конфиге, выдаем ошибку с инструкцией
+        if (!config.auth_code) {
+            throw new Error('Отсутствует код авторизации. Пожалуйста, перейдите на /api/amocrm/init для получения кода авторизации.');
+        }
+        
         const response = await authApiClient.post('/oauth2/access_token', {
             client_id: config.client_id, client_secret: config.client_secret,
             grant_type: 'authorization_code', code: config.auth_code,

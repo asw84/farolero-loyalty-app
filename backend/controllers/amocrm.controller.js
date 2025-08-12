@@ -140,12 +140,56 @@ const getContactByTelegramId = async (req, res) => {
     }
 };
 
+// Поиск контакта по Telegram ID через query параметр
+const searchContactByTelegramId = async (req, res) => {
+    try {
+        const { telegramId } = req.query;
+        
+        if (!telegramId) {
+            return res.status(400).json({ message: 'telegramId обязателен' });
+        }
+        
+        const amocrmService = require('../services/amocrm.service');
+        console.log(`[AmoCRM] Поиск контакта по Telegram ID (query): ${telegramId}`);
+        
+        const contact = await amocrmService.findContactByTelegramId(telegramId);
+        
+        if (contact) {
+            const points = amocrmService.extractPointsFromContact(contact);
+            console.log(`[AmoCRM] ✅ Найден контакт: ${contact.name} (ID: ${contact.id}), баллов: ${points}`);
+            
+            res.status(200).json({
+                success: true,
+                contact: {
+                    id: contact.id,
+                    name: contact.name,
+                    points: points
+                }
+            });
+        } else {
+            console.log(`[AmoCRM] ⚠️ Контакт с Telegram ID ${telegramId} не найден`);
+            res.status(404).json({
+                success: false,
+                message: 'Контакт не найден'
+            });
+        }
+    } catch (error) {
+        console.error('[AmoCRM] ❌ Ошибка при поиске контакта:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Ошибка при поиске контакта',
+            error: error.message
+        });
+    }
+};
+
 // Экспортируем функции для основного функционала AmoCRM
 module.exports = {
     init,
     callback,
     testConnection,
     getContactByTelegramId,
+    searchContactByTelegramId,
     // Здесь будут основные функции для работы с AmoCRM
     // например: createContact, updateContact, searchContact и т.д.
 };
