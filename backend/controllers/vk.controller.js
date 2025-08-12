@@ -7,10 +7,10 @@ async function handleVkCallback(req, res) {
     const { type, object, secret } = req.body;
 
     // 1. Проверка секретного ключа (если он установлен в настройках VK)
-    if (secret !== VK_SECRET_KEY) {
+    if (VK_SECRET_KEY && secret !== VK_SECRET_KEY) {
         console.warn('[VK_CONTROLLER] Отклонен запрос с неверным секретным ключом.');
         return res.status(403).send('Forbidden');
-    }   
+    }
 
     // 2. Обработка разных типов событий
     switch (type) {

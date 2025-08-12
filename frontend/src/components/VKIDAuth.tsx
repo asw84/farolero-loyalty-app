@@ -1,9 +1,47 @@
 // frontend/src/components/VKIDAuth.tsx
 import { useEffect, useRef } from 'react';
-import { VKID } from '@vkid/sdk';
+
+// Определяем типы для VK ID SDK
+interface VKIDUser {
+  uuid: string;
+  token: string;
+  [key: string]: any;
+}
+
+interface VKIDConfig {
+  init: (config: {
+    app_id: number;
+    onAuth: (user: VKIDUser) => void;
+    onError: (error: { message: string }) => void;
+  }) => void;
+  destroy: () => void;
+  Widgets: {
+    OneTap: (config: {
+      container: HTMLDivElement;
+      style: {
+        width: string;
+        height: string;
+        borderRadius: string;
+        backgroundColor: string;
+        color: string;
+        fontSize: string;
+        fontWeight: string;
+        border: string;
+        cursor: string;
+      };
+    }) => void;
+  };
+}
+
+// Объявляем глобальный тип для VKID
+declare global {
+  interface Window {
+    VKID: VKIDConfig;
+  }
+}
 
 interface VKIDAuthProps {
-  onSuccess: (userData: any) => void;
+  onSuccess: (userData: VKIDUser) => void;
   onError: (error: string) => void;
   telegramId: number; // telegramId остается для возможного использования в будущем
 }
@@ -12,7 +50,7 @@ const VKIDAuth: React.FC<VKIDAuthProps> = ({ onSuccess, onError }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Создаем URL для VK OAuth через наш auth роут
-  const vkAuthUrl = new URL('/auth/vk/login', window.location.origin);
+  const vkAuthUrl = new URL(`${import.meta.env.VITE_API_URL}/api/oauth/vk/login`, window.location.origin);
   vkAuthUrl.searchParams.set('tg_user_id', '123'); // TODO: получить реальный Telegram ID
 
   useEffect(() => {
@@ -25,40 +63,47 @@ const VKIDAuth: React.FC<VKIDAuthProps> = ({ onSuccess, onError }) => {
     }
 
     // Инициализация VK ID SDK
-    VKID.Config.init({
-      app_id: Number(vkAppId),
-      onAuth: (user) => {
-        console.log('VK ID авторизация успешна:', user);
-        onSuccess(user);
-      },
-      onError: (error) => {
-        console.error('VK ID ошибка авторизации:', error);
-        onError(error.message || 'Ошибка авторизации VK ID');
-      }
-    });
-
-    // Создаем кнопку One Tap
-    if (containerRef.current) {
-      VKID.Widgets.OneTap({
-        container: containerRef.current,
-        style: {
-          width: '100%',
-          height: '48px',
-          borderRadius: '8px',
-          backgroundColor: '#0077FF',
-          color: '#FFFFFF',
-          fontSize: '16px',
-          fontWeight: '500',
-          border: 'none',
-          cursor: 'pointer'
+    if (window.VKID) {
+      window.VKID.init({
+        app_id: Number(vkAppId),
+        onAuth: (user: VKIDUser) => {
+          console.log('VK ID авторизация успешна:', user);
+          onSuccess(user);
+        },
+        onError: (error: { message: string }) => {
+          console.error('VK ID ошибка авторизации:', error);
+          onError(error.message || 'Ошибка авторизации VK ID');
         }
       });
-    }
 
-    // Очистка при размонтировании
-    return () => {
-      VKID.Config.destroy();
-    };
+      // Создаем кнопку One Tap
+      if (containerRef.current) {
+        window.VKID.Widgets.OneTap({
+          container: containerRef.current,
+          style: {
+            width: '100%',
+            height: '48px',
+            borderRadius: '8px',
+            backgroundColor: '#0077FF',
+            color: '#FFFFFF',
+            fontSize: '16px',
+            fontWeight: '500',
+            border: 'none',
+            cursor: 'pointer'
+          }
+        });
+      }
+
+      // Очистка при размонтировании
+      return () => {
+        if (window.VKID && window.VKID.destroy) {
+          window.VKID.destroy();
+        }
+      };
+    } else {
+      console.error('VK ID SDK не загружен');
+      onError('VK ID SDK не загружен');
+    }
   }, [onSuccess, onError]);
 
   return (

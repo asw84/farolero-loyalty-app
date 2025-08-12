@@ -3,15 +3,14 @@
 const crypto = require('crypto');
 const webhookService = require('../services/webhook.service');
 
-const QTICKETS_WEBHOOK_SECRET = process.env.QTICKETS_WEBHOOK_SECRET;
+const QTICKETS_WEBHOOK_SECRET = process.env.QTICKETS_WEBHOOK_SECRET || 'test_qtickets_secret';
 
 async function handleQticketsWebhook(req, res) {
     console.log('[WebhookController] Получено уведомление от Qtickets!');
 
-    // 1. Проверка подписи
+    // 1. Проверка подписи (обязательно, даже если секрет не задан в окружении)
     const signature = req.headers['x-signature'];
     const expectedSignature = crypto.createHmac('sha1', QTICKETS_WEBHOOK_SECRET).update(req.rawBody).digest('hex');
-
     if (signature !== expectedSignature) {
         console.error('[WebhookController] ❌ Ошибка: Неверная подпись вебхука!');
         return res.status(403).send('Invalid signature.');

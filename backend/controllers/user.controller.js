@@ -4,16 +4,22 @@ const userService = require('../services/user.service');
 
 async function getUser(req, res) {
     const { telegramId, referrerId } = req.body;
+
+    // Validate required fields
+    if (!telegramId) {
+        return res.status(400).json({ message: 'telegramId обязателен' });
+    }
+
     try {
         const userData = await userService.getUserData(telegramId, referrerId);
         if (userData) {
-            res.json(userData);
+            return res.json(userData);
         } else {
-            res.status(404).json({ message: 'Пользователь не найден' });
+            return res.status(404).json({ message: 'Пользователь не найден' });
         }
     } catch (error) {
         console.error(`❌ [User] Ошибка при получении данных пользователя ${telegramId}:`, error);
-        res.status(500).json({ message: 'Ошибка на сервере' });
+        return res.status(500).json({ message: 'Ошибка на сервере' });
     }
 }
 

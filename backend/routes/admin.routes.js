@@ -18,7 +18,9 @@ const isAuthenticated = (req, res, next) => {
 
 router.post('/admin/login', (req, res) => {
     const { password } = req.body;
-    if (password === process.env.ADMIN_PASSWORD) {
+    // Use environment variable if set, otherwise fall back to default 'admin' password
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin';
+    if (password === expectedPassword) {
         res.json({ token: ADMIN_TOKEN });
     } else {
         res.status(401).send('Invalid password');
