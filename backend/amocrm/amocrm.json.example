@@ -1,0 +1,7 @@
+{
+  "base_url": "https://your_domain.amocrm.ru",
+  "client_id": "your_client_id",
+  "client_secret": "your_client_secret",
+  "auth_code": "your_auth_code",
+  "redirect_uri": "https://your_redirect_uri.com"
+}

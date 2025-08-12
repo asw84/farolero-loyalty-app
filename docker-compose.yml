@@ -13,6 +13,7 @@ services:
       - ./backend/.env
     volumes:
       - ./database_data:/app/database
+      - ./backend/amocrm/amocrm.json:/app/amocrm/amocrm.json
     environment:
       - NODE_ENV=production # <-- Говорим, что это продакшен
 
