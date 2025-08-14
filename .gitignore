@@ -1,72 +1,119 @@
-# =========================================================================
-# Универсальный .gitignore для Full-Stack JavaScript проекта
-# =========================================================================
+# 🔒 Security - НЕ добавлять в Git
+backend/.env
+backend/tokens.json
+backend/farolero_loyalty.db
+persistent_data/
+backend/persistent_data/
 
-# --- Зависимости ---
-# Никогда не добавляйте эту папку в Git. Она может весить сотни мегабайт
-# и полностью пересоздается командой `npm install` или `yarn install`.
-# ЭТО ГЛАВНАЯ ПРИЧИНА ВАШЕЙ ОШИБКИ "Exec format error".
-/node_modules
+# 📦 Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
 
-# --- Секреты и Конфигурация ---
-# Содержит секретные ключи, пароли, токены. Огромный риск безопасности.
-# Вместо этого, в репозиторий можно добавить файл .env.example с примерами переменных.
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-/tokens.json
+# 🗄️ Database files
+*.db
+*.sqlite
+*.sqlite3
 
-# --- Логи ---
-# Файлы логов и отладки, которые генерируются во время работы приложения.
-logs
+# 📝 Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# --- Сборочные артефакты (Build output) ---
-# Папки, которые создаются автоматически после сборки фронтенда или бэкенда.
-/build
-/dist
-.next/
-.nuxt/
-.out/
+# 🔧 Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
 
-# --- Файлы Базы Данных ---
-# Локальные файлы базы данных, такие как SQLite. Это данные, а не код.
-*.db
-*.sqlite
-*.sqlite3
+# 📊 Coverage directory used by tools like istanbul
+coverage/
+*.lcov
 
-# --- Файлы, специфичные для ОС ---
-# Системный "мусор" от macOS, Windows и Linux.
-.DS_Store
-._*
-Thumbs.db
-desktop.ini
-*.swp
+# 🔍 ESLint cache
+.eslintcache
 
-# --- Файлы IDE и редакторов кода ---
-# Персональные настройки вашей среды разработки. Они не нужны другим.
-.idea/
-.vscode/
-*.sublime-project
-*.sublime-workspace
+# 💾 Optional npm cache directory
+.npm
 
-# --- Отчеты о покрытии тестами ---
-# Генерируются при запуске тестов и не являются частью исходного кода.
-/coverage
-.jest-cache
+# 📂 Optional REPL history
+.node_repl_history
 
-# --- Временные файлы и архивы ---
+# 🗜️ Output of 'npm pack'
+*.tgz
+
+# 📦 Yarn Integrity file
+.yarn-integrity
+
+# 🔧 dotenv environment variables file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ☁️ Cloud deployment files
+.vercel
+.netlify
+
+# 🐳 Docker volumes
+docker-volumes/
+volumes/
+
+# 🔄 Temporary files
 .tmp/
-*.zip
-*.tar
-*.gzbackend/.env
-backend/tokens.json
-amocrm*.json
-**/token.json
-.sqlite
-*.db
+temp/
+tmp/
+
+# 💻 OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 📁 IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 🧪 Test results
+test-results.json
+coverage/
+
+# 📊 Build artifacts
+dist/
+build/
+.next/
+
+# 🔧 Local development
+.local/
+.cache/
+
+# 📱 Mobile
+*.mobileprovision
+*.p12
+
+# 🎯 Specific to this project
+backend/tokens_backup.json
+amocrm_backup/
+vk_backup/
+instagram_backup/
+
+# 🚫 Don't commit real API keys or secrets
+*secret*
+*key*.json
+*token*.json
+*config*.json
+!backend/amocrm/amocrm.json
+
+# ✅ But keep example files
+!*.example
+!*.template
+!env.example

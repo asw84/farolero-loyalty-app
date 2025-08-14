@@ -2,7 +2,7 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
-    dns: # <-- ДОБАВЛЯЕМ ЭТУ СЕКЦИЮ
+    dns:
       - 8.8.8.8
       - 8.8.4.4
     ports:
@@ -10,10 +10,19 @@ services:
     env_file:
       - ./backend/.env
     volumes:
-      - ./database_data:/app/database
-      - ./backend/amocrm/amocrm.json:/app/amocrm/amocrm.json
+      - ./persistent_data:/app/persistent_data  # Общий volume для всех данных
+      - ./backend/amocrm/amocrm.json:/app/amocrm/amocrm.json:ro  # Только чтение
+      - tokens_volume:/app/tokens  # Отдельный volume для токенов
     environment:
-      - NODE_ENV=production # <-- Говорим, что это продакшен
+      - NODE_ENV=production
+      - STORAGE_PATH=/app/persistent_data
+      - TOKENS_PATH=/app/tokens
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build: ./frontend
@@ -23,3 +32,16 @@ services:
     environment:
       - VITE_VK_APP_ID=54020028
       - VITE_API_URL=https://api.5425685-au70735.twc1.net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  tokens_volume:
+    driver: local

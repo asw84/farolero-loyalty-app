@@ -57,6 +57,46 @@ function initializeDatabase() {
         );
     `;
 
+    const createReferralsTableSql = `
+        CREATE TABLE IF NOT EXISTS referrals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            referrer_telegram_id TEXT NOT NULL,
+            referee_telegram_id TEXT NOT NULL,
+            referral_code TEXT UNIQUE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            activated_at DATETIME,
+            bonus_paid BOOLEAN DEFAULT FALSE,
+            bonus_amount INTEGER DEFAULT 0,
+            FOREIGN KEY (referrer_telegram_id) REFERENCES users (telegram_user_id),
+            FOREIGN KEY (referee_telegram_id) REFERENCES users (telegram_user_id)
+        );
+    `;
+
+    const createPurchasesTableSql = `
+        CREATE TABLE IF NOT EXISTS purchases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_telegram_id TEXT NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            purchase_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            source TEXT DEFAULT 'qtickets',
+            order_id TEXT,
+            FOREIGN KEY (user_telegram_id) REFERENCES users (telegram_user_id)
+        );
+    `;
+
+    const createRfmSegmentsTableSql = `
+        CREATE TABLE IF NOT EXISTS rfm_segments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_telegram_id TEXT UNIQUE NOT NULL,
+            recency_score INTEGER CHECK(recency_score >= 1 AND recency_score <= 5),
+            frequency_score INTEGER CHECK(frequency_score >= 1 AND frequency_score <= 5),
+            monetary_score INTEGER CHECK(monetary_score >= 1 AND monetary_score <= 5),
+            segment_name TEXT,
+            calculated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_telegram_id) REFERENCES users (telegram_user_id)
+        );
+    `;
+
     db.run(createUserTableSql, (err) => {
         if (err) console.error("Error creating 'users' table:", err.message);
         else console.log("'users' table is ready.");
@@ -66,6 +106,27 @@ function initializeDatabase() {
         if (err) console.error("Error creating 'activity' table:", err.message);
         else console.log("'activity' table is ready.");
     });
+
+    db.run(createReferralsTableSql, (err) => {
+        if (err) console.error("Error creating 'referrals' table:", err.message);
+        else console.log("'referrals' table is ready.");
+    });
+
+    db.run(createPurchasesTableSql, (err) => {
+        if (err) console.error("Error creating 'purchases' table:", err.message);
+        else console.log("'purchases' table is ready.");
+    });
+
+    db.run(createRfmSegmentsTableSql, (err) => {
+        if (err) console.error("Error creating 'rfm_segments' table:", err.message);
+        else console.log("'rfm_segments' table is ready.");
+    });
+
+    // Создаем индексы для быстрого поиска
+    db.run('CREATE INDEX IF NOT EXISTS idx_referral_code ON referrals(referral_code);');
+    db.run('CREATE INDEX IF NOT EXISTS idx_referrer ON referrals(referrer_telegram_id);');
+    db.run('CREATE INDEX IF NOT EXISTS idx_user_purchases ON purchases(user_telegram_id);');
+    db.run('CREATE INDEX IF NOT EXISTS idx_purchase_date ON purchases(purchase_date);');
 }
 
 // Helper function to make db operations Promises
@@ -153,15 +214,42 @@ async function addPoints(user_id, points, source, activity_type) {
     });
 }
 
-// ... (other db functions like linkInstagramAccount, linkVkAccount should be refactored similarly if they exist)
+async function dbAll(sql, params = []) {
+    const db = getDbConnection();
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
+async function addPurchase(telegramId, amount, source = 'qtickets', orderId = null) {
+    return await dbRun(
+        'INSERT INTO purchases (user_telegram_id, amount, source, order_id) VALUES (?, ?, ?, ?)',
+        [telegramId, amount, source, orderId]
+    );
+}
+
+async function getUserPurchases(telegramId) {
+    return await dbAll(
+        'SELECT * FROM purchases WHERE user_telegram_id = ? ORDER BY purchase_date DESC',
+        [telegramId]
+    );
+}
 
 module.exports = {
     initializeDatabase,
+    getDbConnection,
+    dbRun,
+    dbGet,
+    dbAll,
     findUserByTelegramId,
     findOrCreateUser,
     updateUser,
     addPoints,
+    addPurchase,
+    getUserPurchases,
     setPendingPointsDeduction,
-    deductPendingPoints,
-    // ... other exports
+    deductPendingPoints
 };

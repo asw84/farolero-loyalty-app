@@ -1,0 +1,481 @@
+/* frontend/src/pages/AnalyticsPage.css */
+/* Стили для страницы аналитики и RFM-анализа */
+
+.analytics-page {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.analytics-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.recalculate-button {
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.recalculate-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.analytics-tabs {
+  display: flex;
+  background: white;
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.tab {
+  flex: 1;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.3s ease;
+}
+
+.tab.active {
+  background: #667eea;
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.tab:hover:not(.active) {
+  background: #f8f9fa;
+  color: #333;
+}
+
+/* Overview Tab */
+.overview-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.metric-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border: 1px solid #e0e0e0;
+  transition: transform 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+}
+
+.metric-value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #667eea;
+  margin-bottom: 8px;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.daily-stats {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.daily-stats h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.stat-date {
+  font-weight: 600;
+  color: #333;
+  min-width: 100px;
+}
+
+.stat-metrics {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Segments Tab */
+.segments-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.segments-summary h3 {
+  margin: 0;
+  color: #333;
+  font-size: 20px;
+}
+
+.segments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.segment-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border-left: 4px solid #667eea;
+  transition: transform 0.3s ease;
+}
+
+.segment-card:hover {
+  transform: translateY(-2px);
+}
+
+.segment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.segment-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.segment-count {
+  background: #f8f9fa;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.segment-description {
+  color: #666;
+  margin-bottom: 15px;
+  font-style: italic;
+}
+
+.segment-scores {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.score {
+  background: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.segment-strategy {
+  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.segment-strategy strong {
+  color: #333;
+}
+
+/* Personal Tab */
+.personal-tab {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.rfm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.rfm-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 24px;
+}
+
+.rfm-segment {
+  font-size: 20px;
+  font-weight: bold;
+  padding: 10px 20px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 25px;
+  border: 2px solid currentColor;
+}
+
+.rfm-scores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.rfm-score {
+  text-align: center;
+  padding: 25px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+}
+
+.score-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.score-value {
+  font-size: 48px;
+  font-weight: bold;
+  color: #667eea;
+  margin-bottom: 10px;
+}
+
+.score-desc {
+  font-size: 14px;
+  color: #888;
+}
+
+.segment-info {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.segment-info h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.segment-info p {
+  margin: 0 0 15px 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+.segment-info p:last-child {
+  margin-bottom: 0;
+}
+
+.rfm-updated {
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.no-rfm {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.no-rfm h3 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+/* Loading and Error States */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  text-align: center;
+  padding: 40px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.error-message h3 {
+  color: #dc3545;
+  margin-bottom: 15px;
+}
+
+.error-message p {
+  color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .analytics-page {
+    padding: 15px;
+  }
+
+  .analytics-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .analytics-header h1 {
+    font-size: 24px;
+  }
+
+  .analytics-tabs {
+    flex-direction: column;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .segments-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-row {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .stat-metrics {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .rfm-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .rfm-scores {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .segment-scores {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .analytics-page {
+    padding: 10px;
+  }
+
+  .metric-card {
+    padding: 20px 15px;
+  }
+
+  .metric-value {
+    font-size: 28px;
+  }
+
+  .segment-card {
+    padding: 20px;
+  }
+
+  .personal-tab {
+    padding: 20px;
+  }
+
+  .score-value {
+    font-size: 36px;
+  }
+}

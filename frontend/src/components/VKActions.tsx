@@ -3,7 +3,6 @@ import axios from 'axios';
 
 interface VKActionsProps {
   vkId?: number;
-  contactId?: number;
 }
 
 export function VKActions({ vkId }: VKActionsProps) {

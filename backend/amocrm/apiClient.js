@@ -6,7 +6,9 @@ const fs = require('fs');
 const path = require('path');
 
 const CONFIG_PATH = path.join(__dirname, 'amocrm.json');
-const TOKENS_PATH = path.join(__dirname, '..', 'tokens.json');
+const TOKENS_PATH = process.env.TOKENS_PATH 
+  ? path.join(process.env.TOKENS_PATH, 'tokens.json')
+  : path.join(__dirname, '..', 'tokens.json');
 
 if (!fs.existsSync(CONFIG_PATH)) { throw new Error('amocrm.json not found!'); }
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
@@ -24,12 +26,37 @@ function getTokens() {
         const content = fs.readFileSync(TOKENS_PATH, 'utf-8');
         if (content) return JSON.parse(content);
     }
+    
+    // Fallback: пытаемся восстановить из переменных окружения
+    if (process.env.AMOCRM_REFRESH_TOKEN) {
+        console.log('[AMO] 🔄 Restoring tokens from environment variables');
+        return {
+            access_token: process.env.AMOCRM_ACCESS_TOKEN || '',
+            refresh_token: process.env.AMOCRM_REFRESH_TOKEN,
+            created_at: 0, // Принуждаем к обновлению
+            expires_in: 0
+        };
+    }
+    
     return { access_token: '', refresh_token: '', created_at: 0, expires_in: 0 };
 }
 
 function saveTokens(tokens) {
     if (!tokens.created_at) { tokens.created_at = Math.floor(Date.now() / 1000); }
+    
+    // Убеждаемся, что директория существует
+    const tokensDir = path.dirname(TOKENS_PATH);
+    if (!fs.existsSync(tokensDir)) {
+        fs.mkdirSync(tokensDir, { recursive: true });
+    }
+    
     fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
+    console.log(`[AMO] 💾 Tokens saved to: ${TOKENS_PATH}`);
+    
+    // Также дублируем refresh_token в переменную окружения (для восстановления)
+    if (tokens.refresh_token && process.env.NODE_ENV === 'production') {
+        console.log('[AMO] 🔄 Consider updating AMOCRM_REFRESH_TOKEN in environment');
+    }
 }
 
 function isTokenExpired(tokens) {

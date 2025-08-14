@@ -3,6 +3,9 @@
 # Используем официальный образ Node.js
 FROM node:18-alpine
 
+# Устанавливаем curl для health checks
+RUN apk add --no-cache curl
+
 # Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
 

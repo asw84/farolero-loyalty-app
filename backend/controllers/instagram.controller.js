@@ -2,11 +2,74 @@
 
 const instagramService = require('../services/instagram.service');
 
+/**
+ * Инициирует процесс авторизации Instagram
+ * GET /auth/instagram/login?tg_user_id=123
+ */
+async function initiateLogin(req, res) {
+    const { tg_user_id } = req.query;
+    
+    if (!tg_user_id) {
+        return res.status(400).json({ error: 'missing_tg_user_id' });
+    }
+
+    try {
+        const { INSTAGRAM_APP_ID, INSTAGRAM_REDIRECT_URI } = process.env;
+        
+        if (!INSTAGRAM_APP_ID || INSTAGRAM_APP_ID === 'YOUR_INSTAGRAM_APP_ID') {
+            return res.status(500).json({ 
+                error: 'instagram_not_configured',
+                message: 'Instagram приложение не настроено'
+            });
+        }
+
+        // Создаем URL авторизации Instagram
+        const authUrl = new URL('https://api.instagram.com/oauth/authorize');
+        authUrl.searchParams.set('client_id', INSTAGRAM_APP_ID);
+        authUrl.searchParams.set('redirect_uri', INSTAGRAM_REDIRECT_URI);
+        authUrl.searchParams.set('scope', 'user_profile,user_media');
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('state', JSON.stringify({ telegram_user_id: tg_user_id }));
+
+        // Перенаправляем на Instagram авторизацию
+        return res.redirect(authUrl.toString());
+        
+    } catch (error) {
+        console.error('[INSTAGRAM] ❌ Ошибка инициации авторизации:', error);
+        return res.status(500).json({ 
+            error: 'instagram_auth_failed',
+            message: 'Ошибка инициации авторизации Instagram'
+        });
+    }
+}
+
 async function handleCallback(req, res) {
-    const { code } = req.query;
-    // TODO: Получить telegram_user_id из сессии или state-параметра
-    // Для MVP пока можем использовать заглушку
-    const telegram_user_id = '123456789'; // ЗАГЛУШКА
+    const { code, state } = req.query;
+    
+    let telegram_user_id;
+    
+    // Пытаемся извлечь telegram_user_id из state параметра
+    if (state) {
+        try {
+            // Если state это JSON
+            const stateData = JSON.parse(decodeURIComponent(state));
+            telegram_user_id = stateData.telegram_user_id;
+        } catch {
+            // Если state это просто строка с ID
+            telegram_user_id = state;
+        }
+    }
+    
+    // Fallback на query параметр
+    if (!telegram_user_id) {
+        telegram_user_id = req.query.telegram_user_id;
+    }
+    
+    // Последний fallback - заглушка для тестирования
+    if (!telegram_user_id) {
+        console.warn('[INSTAGRAM] ⚠️  Using fallback telegram_user_id for testing');
+        telegram_user_id = 'test_user_123';
+    }
 
     if (!code) {
         return res.status(400).send('Ошибка: отсутствует код авторизации.');
@@ -23,5 +86,6 @@ async function handleCallback(req, res) {
 }
 
 module.exports = {
+    initiateLogin,
     handleCallback,
 };
