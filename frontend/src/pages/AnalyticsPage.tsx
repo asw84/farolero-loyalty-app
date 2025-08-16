@@ -1,9 +1,12 @@
 // frontend/src/pages/AnalyticsPage.tsx
-// Страница аналитики и RFM-анализа
+// ЧИСТАЯ СТРАНИЦА АНАЛИТИКИ БЕЗ БЕСКОНЕЧНЫХ ЦИКЛОВ
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTelegram } from '../hooks/useTelegram';
 import './AnalyticsPage.css';
+
+// API Base URL из переменных окружения
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.5425685-au70735.twc1.net';
 
 interface SegmentInfo {
   description: string;
@@ -56,62 +59,90 @@ const AnalyticsPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'overview' | 'segments' | 'personal'>('overview');
 
-  useEffect(() => {
-    loadAnalyticsData();
-    if (user?.id) {
-      loadUserRFM();
-    }
-  }, [user]);
+  // Мемоизация стабильного telegramId
+  const telegramId = useMemo(() => user?.id, [user?.id]);
 
-  const loadAnalyticsData = async () => {
+  // Мемоизация загрузки данных аналитики
+  const loadAnalyticsData = useCallback(async () => {
     try {
-      const response = await fetch('/api/analytics/dashboard');
+      console.log('[AnalyticsPage] 📊 Загружаю данные аналитики');
+      const response = await fetch(`${API_BASE_URL}/api/analytics/dashboard`);
       const data = await response.json();
 
       if (data.success) {
         setDashboardData(data.data);
+        console.log('[AnalyticsPage] ✅ Данные аналитики загружены');
       } else {
         setError('Ошибка загрузки данных аналитики');
       }
     } catch (err) {
-      console.error('Ошибка загрузки аналитики:', err);
+      console.error('[AnalyticsPage] ❌ Ошибка загрузки аналитики:', err);
       setError('Ошибка подключения к серверу');
     }
-  };
+  }, []);
 
-  const loadUserRFM = async () => {
+  // Мемоизация загрузки RFM пользователя
+  const loadUserRFM = useCallback(async () => {
+    if (!telegramId) return;
+
     try {
-      const response = await fetch(`/api/analytics/rfm/user/${user?.id}`);
+      console.log(`[AnalyticsPage] 👤 Загружаю RFM для пользователя: ${telegramId}`);
+      const response = await fetch(`${API_BASE_URL}/api/analytics/rfm/user/${telegramId}`);
       const data = await response.json();
 
       if (data.success) {
         setUserRFM(data.data);
+        console.log('[AnalyticsPage] ✅ RFM данные загружены');
       }
     } catch (err) {
-      console.error('Ошибка загрузки RFM пользователя:', err);
-    } finally {
-      setLoading(false);
+      console.error('[AnalyticsPage] ❌ Ошибка загрузки RFM пользователя:', err);
     }
-  };
+  }, [telegramId]);
 
-  const recalculateRFM = async () => {
+  // Мемоизация пересчета RFM
+  const recalculateRFM = useCallback(async () => {
     try {
+      console.log('[AnalyticsPage] 🔄 Пересчитываю RFM');
       setLoading(true);
-      const response = await fetch('/api/analytics/rfm/calculate', {
+      const response = await fetch(`${API_BASE_URL}/api/analytics/rfm/calculate`, {
         method: 'POST'
       });
 
       const data = await response.json();
       if (data.success) {
-        await loadAnalyticsData();
-        await loadUserRFM();
+        console.log('[AnalyticsPage] ✅ RFM пересчитан, обновляю данные');
+        await Promise.all([
+          loadAnalyticsData(),
+          loadUserRFM()
+        ]);
       }
     } catch (err) {
-      console.error('Ошибка пересчета RFM:', err);
+      console.error('[AnalyticsPage] ❌ Ошибка пересчета RFM:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadAnalyticsData, loadUserRFM]);
+
+  // Загружаем данные только при первой загрузке или изменении telegramId
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setLoading(true);
+      
+      try {
+        // Загружаем аналитику всегда
+        await loadAnalyticsData();
+        
+        // Загружаем пользовательский RFM только если есть telegramId
+        if (telegramId) {
+          await loadUserRFM();
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, [telegramId, loadAnalyticsData, loadUserRFM]);
 
   const formatNumber = (num: number): string => {
     return new Intl.NumberFormat('ru-RU').format(num);

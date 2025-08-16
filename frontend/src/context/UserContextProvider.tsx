@@ -1,6 +1,6 @@
 // frontend/src/context/UserContextProvider.tsx
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { UserContext } from './UserContext';
 
@@ -27,12 +27,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   });
   const [loading, setLoading] = useState(true);
 
-  const setUserData = (data: Partial<UserData>) => {
+  const setUserData = useCallback((data: Partial<UserData>) => {
     setUserDataState(prev => ({ ...prev, ...data }));
-  };
+  }, []);
+
+  const memoizedSetLoading = useCallback(setLoading, []);
 
   return (
-    <UserContext.Provider value={{ userData, setUserData, loading, setLoading }}>
+    <UserContext.Provider value={{ userData, setUserData, loading, setLoading: memoizedSetLoading }}>
       {children}
     </UserContext.Provider>
   );

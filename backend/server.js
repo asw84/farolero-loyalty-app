@@ -13,6 +13,8 @@ const fileUpload = require('express-fileupload');
 const walkService = require('./services/walk.service');
 const orderController = require('./controllers/order.controller');
 const { initializeDatabase } = require('./database');
+const VKConfigValidator = require('./utils/vk-config-validator');
+const { bootstrapModules, injectModules } = require('./modules/bootstrap');
 
 // --- ИМПОРТЫ МАРШРУТОВ ---
 const walkRoutes = require('./routes/walk.routes');
@@ -29,6 +31,7 @@ const vkConfigRoutes = require('./routes/vk.config.routes');
 const activityRoutes = require('./routes/activity.routes');
 const referralRoutes = require('./routes/referral.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const healthRoutes = require('./routes/health.routes');
 const oauthRouter = require('./routes/oauth');
 const socialRouter = require('./routes/social');
 const authRouter = require('./routes/auth');
@@ -55,6 +58,9 @@ app.use(fileUpload({
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
     abortOnLimit: true
 }));
+
+// --- ВНЕДРЕНИЕ МОДУЛЕЙ ---
+app.use(injectModules);
 
 // --- ИНИЦИАЛИЗАЦИЯ КОНТРОЛЛЕРОВ ---
 orderController.init(WALK_URLS);
@@ -157,6 +163,7 @@ app.use('/api', vkConfigRoutes);
 app.use('/api', activityRoutes);
 app.use('/api', referralRoutes);
 app.use('/api', analyticsRoutes);
+app.use('/health', healthRoutes);
 app.use('/api/oauth', oauthRouter);
 app.use('/api/social', socialRouter);
 app.use('/auth', authRouter);
@@ -174,6 +181,15 @@ app.listen(PORT, () => {
     console.log(`✅ Сервер запущен на порту ${PORT}`);
     // Инициализируем базу данных
     initializeDatabase();
+    
+    // --- ИНИЦИАЛИЗАЦИЯ МОДУЛЕЙ ---
+    const modules = bootstrapModules();
+    console.log('🧩 Модульная архитектура готова');
+    
+    // --- ПРОВЕРКА VK КОНФИГУРАЦИИ ---
+    const vkValidator = new VKConfigValidator();
+    vkValidator.validateAtStartup();
+    
     // Загружаем кеш прогулок при старте
     walkService.loadQticketsData();
 });

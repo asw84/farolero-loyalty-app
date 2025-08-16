@@ -1,9 +1,12 @@
 // frontend/src/pages/ReferralPage.tsx
-// Страница реферальной системы
+// ЧИСТАЯ РЕФЕРАЛЬНАЯ СТРАНИЦА БЕЗ БЕСКОНЕЧНЫХ ЦИКЛОВ
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTelegram } from '../hooks/useTelegram';
 import './ReferralPage.css';
+
+// API Base URL из переменных окружения
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.5425685-au70735.twc1.net';
 
 interface ReferralStats {
   referralCode: string | null;
@@ -31,109 +34,157 @@ const ReferralPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
 
-  useEffect(() => {
-    if (user?.id) {
-      loadReferralData();
-    }
-  }, [user]);
+  // Мемоизация стабильного telegramId
+  const telegramId = useMemo(() => user?.id, [user?.id]);
 
-  const loadReferralData = async () => {
+  // 🔧 ИСПРАВЛЕНИЕ: Убираем зависимости из useCallback для предотвращения пересоздания
+  const loadQRCode = useCallback(async (referralCode: string) => {
     try {
-      setLoading(true);
-      setError('');
+      console.log(`[ReferralPage] 📱 Загружаю QR-код для: ${referralCode}`);
+      const response = await fetch(`${API_BASE_URL}/api/referral/qr/${referralCode}?style=styled`);
+      const data: QRCodeResponse = await response.json();
 
-      // Получаем статистику рефералов
-      const statsResponse = await fetch(`/api/referral/stats/${user?.id}`);
-      const statsData = await statsResponse.json();
-
-      if (statsData.success) {
-        setStats(statsData.stats);
-
-        // Если у пользователя нет кода, создаем его
-        if (!statsData.stats.referralCode) {
-          await generateReferralCode();
-        } else {
-          setReferralUrl(`https://t.me/farolero_bot?start=ref_${statsData.stats.referralCode}`);
-          await loadQRCode(statsData.stats.referralCode);
-        }
+      if (data.success) {
+        setQrCode(data.qrCode);
+        console.log('[ReferralPage] ✅ QR-код загружен');
       } else {
-        setError('Ошибка при загрузке данных');
+        console.warn('[ReferralPage] ⚠️ QR-код не удалось загрузить');
       }
     } catch (err) {
-      console.error('Ошибка загрузки данных рефералов:', err);
-      setError('Ошибка подключения к серверу');
-    } finally {
-      setLoading(false);
+      console.error('[ReferralPage] ❌ Ошибка загрузки QR-кода:', err);
     }
-  };
+  }, []); // 🔧 БЕЗ зависимостей
 
-  const generateReferralCode = async () => {
+  // Мемоизация генерации реферального кода (БЕЗ рекурсивного вызова)
+  const generateReferralCode = useCallback(async () => {
+    if (!telegramId) return null;
+
     try {
-      const response = await fetch('/api/referral/generate', {
+      console.log('[ReferralPage] 🔗 Генерирую реферальный код');
+      const response = await fetch(`${API_BASE_URL}/api/referral/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ telegramId: user?.id }),
+        body: JSON.stringify({ telegramId }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setReferralUrl(data.referralUrl);
+        const newReferralUrl = `https://t.me/farolero_bot?start=ref_${data.referralCode}`;
+        setReferralUrl(newReferralUrl);
         await loadQRCode(data.referralCode);
-        // Перезагружаем статистику
-        await loadReferralData();
+        console.log('[ReferralPage] ✅ Реферальный код создан');
+        
+        // Возвращаем данные для обновления статистики
+        return {
+          referralCode: data.referralCode,
+          totalReferrals: 0,
+          totalEarned: 0,
+          recentReferrals: []
+        };
       } else {
         setError('Ошибка создания реферального кода');
+        return null;
       }
     } catch (err) {
-      console.error('Ошибка генерации кода:', err);
+      console.error('[ReferralPage] ❌ Ошибка генерации кода:', err);
       setError('Ошибка создания реферального кода');
+      return null;
     }
-  };
+  }, [telegramId, loadQRCode]);
 
-  const loadQRCode = async (referralCode: string) => {
+  // Мемоизация загрузки данных рефералов (БЕЗ рекурсии)
+  const loadReferralData = useCallback(async () => {
+    if (!telegramId) return;
+
     try {
-      const response = await fetch(`/api/referral/qr/${referralCode}?style=styled`);
-      const data: QRCodeResponse = await response.json();
+      console.log(`[ReferralPage] 📊 Загружаю данные рефералов для: ${telegramId}`);
+      setLoading(true);
+      setError('');
 
-      if (data.success) {
-        setQrCode(data.qrCode);
+      // Получаем статистику рефералов
+      const statsResponse = await fetch(`${API_BASE_URL}/api/referral/stats/${telegramId}`);
+      const statsData = await statsResponse.json();
+
+      if (statsData.success) {
+        const referralStats = statsData.stats;
+        setStats(referralStats);
+
+        // Если у пользователя нет кода, создаем его
+        if (!referralStats.referralCode) {
+          console.log('[ReferralPage] 🆕 Реферальный код отсутствует, создаю новый');
+          const newStats = await generateReferralCode();
+          if (newStats) {
+            setStats({ ...referralStats, ...newStats });
+          }
+        } else {
+          // Устанавливаем URL и загружаем QR-код
+          const existingUrl = `https://t.me/farolero_bot?start=ref_${referralStats.referralCode}`;
+          setReferralUrl(existingUrl);
+          await loadQRCode(referralStats.referralCode);
+          console.log('[ReferralPage] ✅ Данные рефералов загружены');
+        }
+      } else {
+        setError('Ошибка при загрузке данных');
       }
     } catch (err) {
-      console.error('Ошибка загрузки QR-кода:', err);
+      console.error('[ReferralPage] ❌ Ошибка загрузки данных рефералов:', err);
+      setError('Ошибка подключения к серверу');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [generateReferralCode, loadQRCode]);
 
-  const copyToClipboard = async () => {
+  // Функция для повторной попытки (только при ошибке)
+  const retryLoad = useCallback(() => {
+    if (telegramId) {
+      setStats(null); // Сбрасываем stats для новой загрузки
+      loadReferralData();
+    }
+  }, [telegramId, loadReferralData]);
+
+  // 🔧 ИСПРАВЛЕНИЕ: useEffect с правильными зависимостями
+  useEffect(() => {
+    if (telegramId && !stats) { // 🔧 Добавляем проверку !stats для предотвращения повторных загрузок
+      loadReferralData();
+    }
+  }, [telegramId]); // 🔧 УБИРАЕМ loadReferralData из зависимостей!
+
+  // Мемоизация копирования в буфер обмена
+  const copyToClipboard = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(referralUrl);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
+      console.log('[ReferralPage] 📋 Ссылка скопирована в буфер обмена');
     } catch (err) {
-      console.error('Ошибка копирования:', err);
+      console.error('[ReferralPage] ❌ Ошибка копирования:', err);
     }
-  };
+  }, [referralUrl]);
 
-  const shareReferralLink = () => {
+  // Мемоизация функции поделиться
+  const shareReferralLink = useCallback(() => {
     if (navigator.share) {
       navigator.share({
         title: 'Присоединяйся к Farolero!',
         text: 'Получи бонусные баллы при регистрации по моей ссылке!',
         url: referralUrl,
       });
+      console.log('[ReferralPage] 📤 Вызван системный диалог "Поделиться"');
     } else {
       copyToClipboard();
     }
-  };
+  }, [referralUrl, copyToClipboard]);
 
   if (loading) {
     return (
       <div className="referral-page">
         <div className="loading-spinner">
           <div className="spinner"></div>
-          <p>Загрузка...</p>
+          <p>Загрузка реферальных данных...</p>
+          <small>Telegram ID: {telegramId || 'не определен'}</small>
         </div>
       </div>
     );
@@ -145,9 +196,10 @@ const ReferralPage: React.FC = () => {
         <div className="error-message">
           <h3>Ошибка</h3>
           <p>{error}</p>
-          <button onClick={loadReferralData} className="retry-button">
+          <button onClick={retryLoad} className="retry-button">
             Попробовать снова
           </button>
+          <small>Debug: Telegram ID = {telegramId}</small>
         </div>
       </div>
     );

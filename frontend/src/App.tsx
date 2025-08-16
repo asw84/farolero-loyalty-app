@@ -1,14 +1,14 @@
 // frontend/src/App.tsx
-// ПОЛНАЯ ВЕРСИЯ С НОВЫМИ МАРШРУТАМИ
+// ЧИСТАЯ АРХИТЕКТУРА БЕЗ БЕСКОНЕЧНЫХ ЦИКЛОВ
 
-import { useEffect } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import ReferralPage from './pages/ReferralPage';
 import WalkDetailsPage from './pages/WalkDetailsPage';
-import AdminPage from './pages/AdminPage';   // <-- Импорт новой страницы
-import TasksPage from './pages/TasksPage';   // <-- Импорт новой страницы
+import AdminPage from './pages/AdminPage';
+import TasksPage from './pages/TasksPage';
 import { useTelegram } from './hooks/useTelegram';
 import TabBar from './components/TabBar';
 import { UserProvider } from './context/UserContextProvider';
@@ -18,35 +18,56 @@ import { fetchUserData } from './api';
 function AppContent() {
   const { tg, user } = useTelegram();
   const { setUserData, setLoading } = useUser();
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  useEffect(() => {
-    tg.ready();
-    tg.expand();
-    const telegramId = user?.id || 5059160861;
+  // Мемоизация telegramId - стабильное значение
+  const telegramId = useMemo(() => user?.id || 5059160861, [user?.id]);
 
+  // Мемоизация referrerId - стабильное значение
+  const referrerId = useMemo(() => {
     const startParam = tg.initDataUnsafe?.start_param;
-    let referrerId = null;
     if (startParam && startParam.startsWith('ref_')) {
-      referrerId = startParam.replace('ref_', '');
+      return startParam.replace('ref_', '');
     }
+    return null;
+  }, [tg.initDataUnsafe?.start_param]);
 
-    if (telegramId) {
-      console.log(`[App] Загружаю данные для Telegram ID: ${telegramId}`);
-      fetchUserData(telegramId, referrerId)
-        .then(data => {
-          if (data) {
-            setUserData({ ...data, telegramId: telegramId });
-            console.log(`[App] ✅ Данные пользователя успешно сохранены в хранилище.`);
-          }
-        })
-        .catch(error => {
-          console.error('[App] ❌ Ошибка при загрузке данных пользователя:', error);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+  // Инициализация Telegram (только один раз)
+  useEffect(() => {
+    if (!isInitialized) {
+      console.log('[App] 🚀 Инициализирую Telegram WebApp');
+      tg.ready();
+      tg.expand();
+      setIsInitialized(true);
     }
-  }, [tg, user, setUserData, setLoading]);
+  }, [tg, isInitialized]);
+
+  // Мемоизация загрузки данных пользователя
+  const loadUserData = useCallback(async () => {
+    if (!telegramId) return;
+
+    console.log(`[App] 📡 Загружаю данные для Telegram ID: ${telegramId}`);
+    setLoading(true);
+
+    try {
+      const data = await fetchUserData(telegramId, referrerId);
+      if (data) {
+        setUserData({ ...data, telegramId });
+        console.log('[App] ✅ Данные пользователя успешно загружены');
+      }
+    } catch (error) {
+      console.error('[App] ❌ Ошибка при загрузке данных пользователя:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [telegramId, referrerId, setUserData, setLoading]);
+
+  // Загрузка данных пользователя (только при изменении telegramId или referrerId)
+  useEffect(() => {
+    if (isInitialized && telegramId) {
+      loadUserData();
+    }
+  }, [isInitialized, telegramId, referrerId, loadUserData]);
 
   return (
     <div className="app">

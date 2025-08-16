@@ -1,37 +1,388 @@
-# Cursor IDE Configuration for MCP Context7
+# 🎯 Cursor Rules - Farolero Loyalty App
 
-## MCP Server Configuration
-The project uses Model Context Protocol (MCP) with Context7 server for enhanced AI assistance.
+## 📋 Общие принципы разработки
 
-### MCP Context7 Setup
-- **Server**: Context7 MCP server
-- **Protocol**: Model Context Protocol v1.0
-- **Integration**: Backend API endpoints at `/api/mcp/*`
+### Приоритеты проекта
+1. **Стабильность интеграций** - AmoCRM, VK, Instagram, Qtickets
+2. **Модульная архитектура** - каждый компонент изолирован и независим
+3. **Чистота кода** - читаемость, тестируемость, документированность
+4. **Безопасность токенов** - тройная защита (файл + env + БД)
+5. **Production-ready** - готовность к промышленной эксплуатации
 
-### Key Features
-- User context management
-- Contextual recommendations
-- Real-time context updates
-- AI-powered insights
+### Статус проекта
+- **Готовность**: 85% (согласно INTEGRATIONS_STATUS_REPORT.md)
+- **Критические задачи**: VK_CLIENT_SECRET, AmoCRM токены, Instagram интеграция
+- **Архитектура**: React 19 + Node.js + Express + SQLite + Docker
 
-### Development Guidelines
-- Always check MCP server status before operations
-- Use proper error handling for MCP calls
-- Implement context validation
-- Follow MCP protocol standards
+---
 
-### API Endpoints
-- `POST /api/mcp/initialize` - Initialize MCP server
-- `GET /api/mcp/status` - Check server status
-- `GET /api/mcp/context/:userId` - Get user context
-- `PUT /api/mcp/context/:userId` - Update user context
-- `GET /api/mcp/recommendations/:userId` - Get recommendations
+## 🏗️ Архитектурные правила
 
-### Environment Variables
-- `CONTEXT7_API_KEY` - Your Context7 API key
-- `CONTEXT7_BASE_URL` - Context7 API base URL
+### Модульная структура
+```
+backend/
+├── controllers/     # API endpoints (тонкий слой)
+├── services/       # Бизнес-логика (изолированные модули)
+├── models/         # Модели данных
+├── middleware/     # Промежуточные обработчики
+├── utils/          # Утилиты общего назначения
+├── integrations/   # Внешние API (каждый в отдельной папке)
+│   ├── amocrm/
+│   ├── vk/
+│   ├── instagram/
+│   └── qtickets/
+└── tests/          # Тесты
+```
 
-### Testing
-- Test MCP endpoints before deployment
-- Verify context data integrity
-- Check server connectivity
+### Принципы модульности
+- **Каждый модуль** должен иметь единственную ответственность
+- **Зависимости** только через dependency injection
+- **Интерфейсы** для всех внешних интеграций
+- **Конфигурация** через environment variables
+- **Логирование** структурированное во всех модулях
+
+---
+
+## 🧹 Правила чистоты кода
+
+### JavaScript/TypeScript стандарты
+```javascript
+// ✅ ПРАВИЛЬНО - чистые функции
+const calculateLoyaltyStatus = (points) => {
+  if (points >= 3000) return 'platinum';
+  if (points >= 1500) return 'gold';
+  if (points >= 500) return 'silver';
+  return 'bronze';
+};
+
+// ✅ ПРАВИЛЬНО - async/await вместо callbacks
+const createUser = async (userData) => {
+  try {
+    const user = await userService.create(userData);
+    await amocrmService.syncUser(user);
+    return user;
+  } catch (error) {
+    logger.error('User creation failed', { error, userData });
+    throw error;
+  }
+};
+
+// ❌ НЕПРАВИЛЬНО - смешивание логики
+const createUserAndSendEmail = async (userData) => {
+  // Создание пользователя + отправка email в одной функции
+};
+```
+
+### Именование
+- **Переменные**: camelCase, описательные имена
+- **Функции**: глаголы (getUserProfile, calculatePoints)
+- **Константы**: UPPER_SNAKE_CASE
+- **Классы**: PascalCase
+- **Файлы**: kebab-case
+
+### Комментарии и документация
+```javascript
+/**
+ * Рассчитывает RFM сегмент пользователя
+ * @param {number} userId - ID пользователя
+ * @returns {Promise<RFMSegment>} - Объект с R, F, M метриками
+ */
+const calculateRFMSegment = async (userId) => {
+  // Реализация...
+};
+```
+
+---
+
+## 📊 Обязательное обновление tasks.md
+
+### После КАЖДОЙ завершенной задачи
+```bash
+# ОБЯЗАТЕЛЬНО выполнить:
+1. Обновить статус задачи в task.md (pending → completed)
+2. Добавить timestamp завершения
+3. Указать результат проверки функционала
+4. Отметить зависимые задачи как ready (если применимо)
+```
+
+### Формат обновления task.md
+```markdown
+### Задача X.X: Название задачи
+**Статус**: ✅ COMPLETED  
+**Дата завершения**: 2025-01-31 15:30  
+**Время выполнения**: 2.5 часа (план: 3 часа)  
+
+#### Результат:
+✅ Функционал протестирован и работает  
+✅ Все микрозадачи выполнены  
+✅ Интеграция с AmoCRM стабильна  
+
+#### Следующие задачи готовы к выполнению:
+- [x] Задача 2.1 (зависела от этой)
+- [x] Задача 2.2 (зависела от этой)
+```
+
+---
+
+## 🔧 Правила разработки по компонентам
+
+### AmoCRM интеграция
+```javascript
+// Всегда использовать TokenManager для токенов
+const amocrmClient = new AmoCRMClient(tokenManager);
+
+// Обязательная обработка ошибок авторизации
+try {
+  const result = await amocrmClient.createContact(userData);
+} catch (error) {
+  if (error.status === 401) {
+    await tokenManager.refreshTokens();
+    // Retry операция
+  }
+  throw error;
+}
+```
+
+### VK интеграция
+```javascript
+// Проверка наличия реальных ключей
+if (process.env.VK_CLIENT_SECRET === 'ВАШ_ЗАЩИЩЁННЫЙ_КЛЮЧ_ИЗ_VK') {
+  throw new Error('VK_CLIENT_SECRET not configured');
+}
+
+// Валидация пользователя перед привязкой
+const isValidUser = await vkClient.validateUser(accessToken, userId);
+if (!isValidUser) {
+  throw new ValidationError('Invalid VK user');
+}
+```
+
+### Database операции
+```javascript
+// Всегда использовать prepared statements
+const stmt = db.prepare('SELECT * FROM users WHERE telegram_id = ?');
+const user = stmt.get(telegramId);
+
+// Транзакции для связанных операций
+const addPoints = db.transaction((userId, amount, type) => {
+  db.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(amount, userId);
+  db.prepare('INSERT INTO point_transactions (user_id, amount, type) VALUES (?, ?, ?)').run(userId, amount, type);
+});
+```
+
+---
+
+## 🛡️ Безопасность и токены
+
+### Обязательные проверки
+```javascript
+// Валидация Telegram Web App данных
+const validateTelegramAuth = (initData, botToken) => {
+  const urlParams = new URLSearchParams(initData);
+  const hash = urlParams.get('hash');
+  // Полная валидация HMAC...
+};
+
+// Sanitization пользовательского ввода
+const sanitizeInput = (input) => {
+  return validator.escape(validator.trim(input));
+};
+
+// Rate limiting для всех endpoints
+app.use('/api', rateLimiter);
+```
+
+### Управление токенами
+```javascript
+// Тройная защита токенов AmoCRM
+class TokenManager {
+  async saveTokens(tokens) {
+    // 1. Сохранить в файл (primary)
+    await this.saveToFile(tokens);
+    // 2. Backup в environment
+    await this.saveToEnv(tokens);
+    // 3. Persistent в БД
+    await this.saveToDatabase(tokens);
+  }
+}
+```
+
+---
+
+## 🧪 Тестирование
+
+### Обязательные тесты для каждого модуля
+```javascript
+describe('UserService', () => {
+  test('should create user with valid data', async () => {
+    const userData = { telegramId: '123', firstName: 'Test' };
+    const user = await userService.create(userData);
+    expect(user.id).toBeDefined();
+    expect(user.points).toBe(100); // Welcome bonus
+  });
+
+  test('should handle AmoCRM sync failure gracefully', async () => {
+    // Mock AmoCRM error
+    amocrmService.syncUser.mockRejectedValue(new Error('API Error'));
+    
+    const userData = { telegramId: '123', firstName: 'Test' };
+    // Should not fail user creation if AmoCRM sync fails
+    await expect(userService.create(userData)).resolves.toBeDefined();
+  });
+});
+```
+
+### Интеграционные тесты
+```javascript
+// Тест полного flow
+test('Complete referral flow', async () => {
+  // 1. Создать пользователя
+  const referrer = await createTestUser();
+  
+  // 2. Генерировать реф-код
+  const refCode = await generateReferralCode(referrer.id);
+  
+  // 3. Регистрация по реф-коду
+  const referee = await registerWithReferralCode(refCode);
+  
+  // 4. Проверить начисление баллов
+  const updatedReferrer = await getUserById(referrer.id);
+  expect(updatedReferrer.points).toBe(200); // 100 welcome + 100 referral
+});
+```
+
+---
+
+## 📦 Docker и деплой
+
+### Обязательные volume mappings
+```yaml
+# docker-compose.yml
+volumes:
+  - amocrm_tokens:/app/tokens          # КРИТИЧНО: Persistent токены
+  - sqlite_data:/app/database          # База данных
+  - logs_data:/app/logs               # Логи
+```
+
+### Health checks
+```javascript
+// Обязательный health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    // Check database
+    await db.prepare('SELECT 1').get();
+    
+    // Check critical services
+    const amocrmHealth = await amocrmService.healthCheck();
+    const vkHealth = await vkService.healthCheck();
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      services: { amocrm: amocrmHealth, vk: vkHealth }
+    });
+  } catch (error) {
+    res.status(503).json({ status: 'unhealthy', error: error.message });
+  }
+});
+```
+
+---
+
+## 🔄 Workflow правила
+
+### Git workflow
+- **Feature branches**: `feature/task-2-1-referral-system`
+- **Commit messages**: `feat(referral): implement QR code generation (Task 2.1.2)`
+- **PR description**: Обязательно ссылка на задачу в task.md
+
+### Code review checklist
+- [ ] Код соответствует архитектурным принципам
+- [ ] Добавлены/обновлены тесты
+- [ ] Обновлен task.md со статусом
+- [ ] Проверена безопасность (особенно токены)
+- [ ] Добавлено логирование для новых операций
+- [ ] Проверена совместимость с существующими модулями
+
+### Deployment checklist
+- [ ] Все тесты проходят
+- [ ] Health check возвращает 200
+- [ ] Токены AmoCRM не слетели
+- [ ] Внешние интеграции доступны
+- [ ] Логи не содержат критических ошибок
+- [ ] task.md обновлен с результатами деплоя
+
+---
+
+## 🎯 Приоритеты по ЭПИКАМ (из task.md)
+
+### ЭПИК 1 (P0 - КРИТИЧНО)
+- Исправление VK интеграции (VK_CLIENT_SECRET)
+- Стабилизация AmoCRM токенов
+- Автоопределение полей AmoCRM
+
+### ЭПИК 2 (P1 - ВЫСОКИЙ)
+- Реферальная система с QR-кодами
+- Система статусов и кэшбэка
+- RFM-анализ пользователей
+
+### ЭПИК 3 (P2 - СРЕДНИЙ)
+- Instagram интеграция
+- Отслеживание соц.активности
+- Улучшение Qtickets
+
+### ЭПИК 4 (P3 - НИЗКИЙ)
+- Telegram Bot уведомления
+- Unisender рассылки
+- Геймификация
+
+---
+
+## 📋 Автоматические проверки
+
+### Pre-commit hooks
+```bash
+#!/bin/bash
+# Проверка task.md актуальности
+if [ -f "task.md" ]; then
+  echo "✅ Checking task.md updates..."
+  # Проверить что task.md был изменен в последних коммитах
+fi
+
+# Проверка безопасности
+echo "🔒 Security check..."
+grep -r "ВАШ_ЗАЩИЩЁННЫЙ_КЛЮЧ_ИЗ_VK" . && exit 1
+grep -r "YOUR_INSTAGRAM_APP_ID" . && exit 1
+
+# Проверка тестов
+echo "🧪 Running tests..."
+npm test || exit 1
+```
+
+### CI/CD правила
+- **На каждый push**: запуск тестов
+- **На main branch**: автоматический деплой
+- **После деплоя**: обновление task.md с результатами
+- **Backup токенов**: перед каждым деплоем
+
+---
+
+## 🚨 Критические правила
+
+### НИКОГДА НЕ ДЕЛАТЬ:
+- ❌ Коммитить реальные токены/ключи
+- ❌ Пропускать обновление task.md
+- ❌ Смешивать бизнес-логику с API слоем
+- ❌ Использовать синхронные операции в Node.js
+- ❌ Игнорировать ошибки внешних API
+
+### ВСЕГДА ДЕЛАТЬ:
+- ✅ Обновлять task.md после каждой задачи
+- ✅ Писать тесты для новой функциональности
+- ✅ Логировать все критические операции
+- ✅ Проверять health endpoints после изменений
+- ✅ Делать backup токенов перед деплоем
+
+---
+
+**Эти правила обеспечивают качество кода, стабильность интеграций и отслеживание прогресса разработки в соответствии с архитектурой проекта Farolero Loyalty App.**
