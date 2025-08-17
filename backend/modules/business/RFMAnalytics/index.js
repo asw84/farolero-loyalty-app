@@ -93,15 +93,24 @@ class RFMAnalyticsModule {
         try {
             this.logger.info('Starting RFM calculation for all users');
 
-            // Получаем всех пользователей с покупками
-            const stmt = this.db.prepare(`
-                SELECT DISTINCT u.telegram_id
-                FROM users u
-                INNER JOIN point_transactions pt ON u.id = pt.user_id
-                WHERE pt.reason LIKE '%покупк%' OR pt.reason LIKE '%purchase%'
-            `);
-            
-            const users = stmt.all();
+                            // Получаем всех пользователей с покупками
+        const stmt = this.db.prepare(`
+            SELECT DISTINCT u.telegram_user_id as telegram_id
+            FROM users u
+            INNER JOIN purchases p ON u.telegram_user_id = p.user_telegram_id
+        `);
+        
+        const users = stmt.all();
+        
+        if (!users || !Array.isArray(users)) {
+            this.logger.warn('No users found or invalid result format');
+            return {
+                processed: 0,
+                errors: 0,
+                total: 0,
+                success: true
+            };
+        }
             let processedCount = 0;
             let errors = 0;
 
@@ -151,14 +160,13 @@ class RFMAnalyticsModule {
 
             // Получаем транзакции покупок
             const purchaseStmt = this.db.prepare(`
-                SELECT amount, created_at, metadata
-                FROM point_transactions
-                WHERE user_id = ? AND type = 'debit' 
-                AND (reason LIKE '%покупк%' OR reason LIKE '%purchase%')
-                ORDER BY created_at DESC
+                SELECT amount, purchase_date as created_at, order_id as metadata
+                FROM purchases
+                WHERE user_telegram_id = ?
+                ORDER BY purchase_date DESC
             `);
 
-            const purchases = purchaseStmt.all(user.id);
+            const purchases = purchaseStmt.all(telegramId);
 
             if (purchases.length === 0) {
                 this.logger.debug('No purchases found for user', { telegramId });
@@ -182,22 +190,17 @@ class RFMAnalyticsModule {
             // Сохраняем в БД
             const saveStmt = this.db.prepare(`
                 INSERT OR REPLACE INTO rfm_segments 
-                (user_id, telegram_id, recency_score, frequency_score, monetary_score, 
-                 segment_name, recency_days, frequency_count, monetary_value, calculated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (user_telegram_id, recency_score, frequency_score, monetary_score, 
+                 segment_name, calculated_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             `);
 
             saveStmt.run(
-                user.id,
                 telegramId,
                 recencyScore,
                 frequencyScore,
                 monetaryScore,
-                segmentName,
-                metrics.daysSinceLastPurchase,
-                metrics.frequency,
-                metrics.monetary,
-                Math.floor(Date.now() / 1000)
+                segmentName
             );
 
             const result = {
@@ -232,7 +235,7 @@ class RFMAnalyticsModule {
      */
     calculateRFMMetrics(purchases) {
         // Recency: дни с последней покупки
-        const lastPurchaseDate = new Date(purchases[0].created_at * 1000);
+        const lastPurchaseDate = new Date(purchases[0].created_at);
         const today = new Date();
         const daysSinceLastPurchase = Math.floor((today - lastPurchaseDate) / (1000 * 60 * 60 * 24));
 
@@ -240,7 +243,7 @@ class RFMAnalyticsModule {
         const frequency = purchases.length;
 
         // Monetary: общая потраченная сумма
-        const monetary = purchases.reduce((sum, purchase) => sum + Math.abs(purchase.amount), 0);
+        const monetary = purchases.reduce((sum, purchase) => sum + parseFloat(purchase.amount), 0);
 
         return {
             daysSinceLastPurchase,
@@ -254,16 +257,20 @@ class RFMAnalyticsModule {
      * @returns {Promise<Object>}
      */
     async getQuantiles() {
+        // Получаем статистику из таблицы purchases для расчета квантилей
         const stmt = this.db.prepare(`
             SELECT 
-                recency_days, frequency_count, monetary_value
-            FROM rfm_segments 
-            WHERE calculated_at > ? 
-            ORDER BY calculated_at DESC
+                user_telegram_id,
+                COUNT(*) as frequency_count,
+                SUM(amount) as monetary_value,
+                MIN(julianday('now') - julianday(purchase_date)) as recency_days
+            FROM purchases
+            WHERE purchase_date > date('now', '-30 days')
+            GROUP BY user_telegram_id
+            HAVING COUNT(*) > 0
         `);
 
-        const monthAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
-        const data = stmt.all(monthAgo);
+        const data = stmt.all();
 
         if (data.length < 10) {
             // Если данных мало, используем стандартные квантили
@@ -357,7 +364,7 @@ class RFMAnalyticsModule {
         try {
             const stmt = this.db.prepare(`
                 SELECT * FROM rfm_segments 
-                WHERE telegram_id = ? 
+                WHERE user_telegram_id = ? 
                 ORDER BY calculated_at DESC 
                 LIMIT 1
             `);
@@ -370,24 +377,33 @@ class RFMAnalyticsModule {
             }
 
             // Проверяем актуальность (обновляем раз в неделю)
-            const weekAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
-            if (rfmData.calculated_at < weekAgo) {
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const calculatedAt = new Date(rfmData.calculated_at);
+            
+            if (calculatedAt < weekAgo) {
                 return await this.calculateUserRFM(telegramId);
             }
 
+            // Получаем реальные метрики из таблицы покупок
+            const purchaseStmt = this.db.prepare(`
+                SELECT amount, purchase_date as created_at
+                FROM purchases
+                WHERE user_telegram_id = ?
+                ORDER BY purchase_date DESC
+            `);
+            const purchases = purchaseStmt.all(telegramId);
+            const metrics = purchases.length > 0 ? this.calculateRFMMetrics(purchases) : null;
+
             return {
-                userId: rfmData.user_id,
-                telegramId: rfmData.telegram_id,
+                userId: rfmData.user_telegram_id,
+                telegramId: rfmData.user_telegram_id,
                 recencyScore: rfmData.recency_score,
                 frequencyScore: rfmData.frequency_score,
                 monetaryScore: rfmData.monetary_score,
                 segmentName: rfmData.segment_name,
                 segment: this.RFM_SEGMENTS[rfmData.segment_name],
-                metrics: {
-                    daysSinceLastPurchase: rfmData.recency_days,
-                    frequency: rfmData.frequency_count,
-                    monetary: rfmData.monetary_value
-                },
+                metrics: metrics,
                 calculatedAt: rfmData.calculated_at
             };
 
@@ -405,36 +421,55 @@ class RFMAnalyticsModule {
         try {
             const stmt = this.db.prepare(`
                 SELECT 
-                    segment_name,
+                    r.segment_name,
                     COUNT(*) as count,
-                    AVG(monetary_value) as avg_monetary,
-                    AVG(frequency_count) as avg_frequency,
-                    AVG(recency_days) as avg_recency
-                FROM rfm_segments 
-                WHERE calculated_at > ?
-                GROUP BY segment_name
+                    AVG(p_stats.monetary_value) as avg_monetary,
+                    AVG(p_stats.frequency_count) as avg_frequency,
+                    AVG(p_stats.recency_days) as avg_recency
+                FROM rfm_segments r
+                LEFT JOIN (
+                    SELECT 
+                        user_telegram_id,
+                        SUM(amount) as monetary_value,
+                        COUNT(*) as frequency_count,
+                        MIN(julianday('now') - julianday(purchase_date)) as recency_days
+                    FROM purchases
+                    GROUP BY user_telegram_id
+                ) p_stats ON r.user_telegram_id = p_stats.user_telegram_id
+                WHERE r.calculated_at > date('now', '-30 days')
+                GROUP BY r.segment_name
                 ORDER BY COUNT(*) DESC
             `);
 
-            const monthAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
-            const segments = stmt.all(monthAgo);
+            const segments = stmt.all();
+            
+            if (!segments || !Array.isArray(segments)) {
+                this.logger.warn('No segments found or invalid result format');
+                return {
+                    segments: [],
+                    totalUsers: 0,
+                    lastUpdated: new Date().toISOString()
+                };
+            }
 
             const summary = segments.map(segment => ({
                 name: segment.segment_name,
                 count: segment.count,
                 percentage: 0, // будет рассчитан ниже
                 averages: {
-                    monetary: Math.round(segment.avg_monetary),
-                    frequency: Math.round(segment.avg_frequency * 10) / 10,
-                    recency: Math.round(segment.avg_recency)
+                    monetary: Math.round(segment.avg_monetary || 0),
+                    frequency: Math.round((segment.avg_frequency || 0) * 10) / 10,
+                    recency: Math.round(segment.avg_recency || 0)
                 },
                 segment: this.RFM_SEGMENTS[segment.segment_name]
             }));
 
-            const totalUsers = segments.reduce((sum, s) => sum + s.count, 0);
-            summary.forEach(s => {
-                s.percentage = Math.round((s.count / totalUsers) * 100);
-            });
+            const totalUsers = summary.reduce((sum, s) => sum + s.count, 0);
+            if (totalUsers > 0) {
+                summary.forEach(s => {
+                    s.percentage = Math.round((s.count / totalUsers) * 100);
+                });
+            }
 
             return {
                 segments: summary,
@@ -458,37 +493,51 @@ class RFMAnalyticsModule {
         try {
             const stmt = this.db.prepare(`
                 SELECT 
-                    r.telegram_id,
-                    u.first_name,
+                    r.user_telegram_id as telegram_id,
+                    u.telegram_user_id,
                     u.points,
                     r.recency_score,
                     r.frequency_score,
                     r.monetary_score,
-                    r.monetary_value,
-                    r.frequency_count,
-                    r.recency_days
+                    p_stats.monetary_value,
+                    p_stats.frequency_count,
+                    p_stats.recency_days
                 FROM rfm_segments r
-                JOIN users u ON r.user_id = u.id
+                JOIN users u ON r.user_telegram_id = u.telegram_user_id
+                LEFT JOIN (
+                    SELECT 
+                        user_telegram_id,
+                        SUM(amount) as monetary_value,
+                        COUNT(*) as frequency_count,
+                        MIN(julianday('now') - julianday(purchase_date)) as recency_days
+                    FROM purchases
+                    GROUP BY user_telegram_id
+                ) p_stats ON r.user_telegram_id = p_stats.user_telegram_id
                 WHERE r.segment_name = ?
-                ORDER BY r.monetary_value DESC
+                ORDER BY p_stats.monetary_value DESC
                 LIMIT ?
             `);
 
             const users = stmt.all(segmentName, limit);
+            
+            if (!users || !Array.isArray(users)) {
+                this.logger.warn('No users found for segment or invalid result format', { segmentName });
+                return [];
+            }
 
             return users.map(user => ({
                 telegramId: user.telegram_id,
-                firstName: user.first_name,
-                points: user.points,
+                telegramUserId: user.telegram_user_id,
+                points: user.points || 0,
                 rfmScores: {
                     recency: user.recency_score,
                     frequency: user.frequency_score,
                     monetary: user.monetary_score
                 },
                 metrics: {
-                    monetaryValue: user.monetary_value,
-                    frequencyCount: user.frequency_count,
-                    recencyDays: user.recency_days
+                    monetaryValue: user.monetary_value || 0,
+                    frequencyCount: user.frequency_count || 0,
+                    recencyDays: user.recency_days || 0
                 }
             }));
 

@@ -1,6 +1,7 @@
 // backend/services/admin.service.js
 
 const { db, findOrCreateUser, addPoints } = require('../database');
+const statusService = require('./status.service');
 
 /**
  * Gets the top users by points.
@@ -109,10 +110,22 @@ async function adjustPoints(telegramId, points, reason) {
 
         await addPoints(user.id, points, 'manual', reason);
 
+        // Автоматически обновляем статус пользователя
+        const statusUpdate = await statusService.updateUserStatus(telegramId);
+        
         const updatedUser = await findOrCreateUser(String(telegramId), 'telegram_user_id');
 
         console.log(`[AdminService] ✅ Баллы для ${telegramId} обновлены. Новый баланс: ${updatedUser.points}`);
-        return { success: true, newTotalPoints: updatedUser.points };
+        
+        if (statusUpdate.statusChanged) {
+            console.log(`[AdminService] 🎉 Статус пользователя изменен: ${statusUpdate.oldStatus} → ${statusUpdate.newStatus}`);
+        }
+        
+        return { 
+            success: true, 
+            newTotalPoints: updatedUser.points,
+            statusUpdate: statusUpdate
+        };
 
     } catch (error) {
         console.error('❌ [AdminService] Ошибка при ручной корректировке баллов:', error);

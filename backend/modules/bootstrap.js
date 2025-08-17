@@ -46,7 +46,8 @@ function bootstrapModules() {
     console.log('🚀 Bootstrapping modules...');
 
     // Регистрируем базовые зависимости
-    container.registerInstance('database', db);
+    const database = require('../database');
+    container.registerInstance('database', database.getDbConnection());
     container.registerInstance('logger', new Logger());
 
     // Регистрируем утилиты

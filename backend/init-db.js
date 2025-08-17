@@ -5,11 +5,10 @@ const { initializeDatabase } = require('./database');
 
 console.log('🗄️  Инициализация базы данных...');
 
-try {
-    initializeDatabase();
-    
-    // Ждем немного чтобы все операции завершились
-    setTimeout(() => {
+async function init() {
+    try {
+        await initializeDatabase();
+        
         console.log('✅ База данных успешно инициализирована!');
         console.log('📊 Все таблицы созданы:');
         console.log('   - users (пользователи)');
@@ -19,9 +18,11 @@ try {
         console.log('');
         console.log('🚀 Теперь можно запускать сервер: node server.js');
         process.exit(0);
-    }, 2000);
-    
-} catch (error) {
-    console.error('❌ Ошибка инициализации базы данных:', error);
-    process.exit(1);
+        
+    } catch (error) {
+        console.error('❌ Ошибка инициализации базы данных:', error);
+        process.exit(1);
+    }
 }
+
+init();

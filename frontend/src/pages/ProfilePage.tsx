@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useUser } from '../hooks/useUser';
 import VKIDAuth from '../components/VKIDAuth';
+import StatusDisplay from '../components/StatusDisplay';
 import { testAmoCRMConnection, getAmoCRMContact } from '../api';
 
 const ProfilePage = () => {
@@ -130,12 +131,23 @@ const ProfilePage = () => {
   }
 
   return (
-    <div>
-      <h1>Профиль</h1>
-      <p>ID: {userData.telegramId}</p>
-      <p>Баллы: <strong>{userData.points}</strong></p>
-      <p>Статус: <strong>{userData.status}</strong></p>
-      <hr/>
+    <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>Профиль</h1>
+      
+      <StatusDisplay 
+        points={userData.points}
+        status={userData.status}
+        telegramId={userData.telegramId}
+      />
+      
+      <div style={{ 
+        backgroundColor: '#f8f9fa',
+        padding: '15px',
+        borderRadius: '10px',
+        marginBottom: '20px'
+      }}>
+        <p><strong>Telegram ID:</strong> {userData.telegramId}</p>
+      </div>
       
       <h3>Привязка аккаунтов</h3>
       

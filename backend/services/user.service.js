@@ -4,6 +4,8 @@
 const amocrmService = require('./amocrm.service');
 const { findUserByTelegramId, findOrCreateUser, updateUser } = require('../database');
 const { STORAGE_MODE, APP_BASE_URL } = require('../config');
+const { calculateStatus } = require('./loyaltyService');
+const statusService = require('./status.service');
 
 async function getUserData(telegramId, referrerId = null) {
     console.log(`[UserService] Запрошены данные для ${telegramId}. Режим хранения: ${STORAGE_MODE}`);
@@ -18,9 +20,10 @@ async function getUserData(telegramId, referrerId = null) {
             
             if (amoContact) {
                 const pointsFromAmo = amocrmService.extractPointsFromContact(amoContact);
+                const status = calculateStatus(pointsFromAmo);
                 userData = {
                     points: pointsFromAmo,
-                    status: 'Стандарт',
+                    status: status,
                     referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
                 };
                 console.log(`[UserService] ✅ Данные из AmoCRM: ${pointsFromAmo} баллов`);
@@ -55,9 +58,17 @@ async function getUserData(telegramId, referrerId = null) {
             
             // Получаем обновленные данные из локальной БД
             user = await findUserByTelegramId(telegramId);
+            
+            // Обновляем статус на основе баллов
+            const newStatus = calculateStatus(user.points);
+            if (user.status !== newStatus) {
+                await updateUser(telegramId, { status: newStatus });
+                user.status = newStatus;
+            }
+            
             userData = {
                 points: user.points,
-                status: 'Стандарт',
+                status: user.status,
                 referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
             };
             console.log(`[UserService] ✅ Синхронизировано и отдано из локальной БД: ${user.points} баллов`);
@@ -71,9 +82,16 @@ async function getUserData(telegramId, referrerId = null) {
                 user = await findOrCreateUser(telegramId, 'telegram_user_id', referrerId);
             }
             
+            // Обновляем статус на основе баллов
+            const newStatus = calculateStatus(user.points);
+            if (user.status !== newStatus) {
+                await updateUser(telegramId, { status: newStatus });
+                user.status = newStatus;
+            }
+            
             userData = {
                 points: user.points,
-                status: 'Стандарт',
+                status: user.status,
                 referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
             };
             console.log(`[UserService] ✅ Данные из локальной БД: ${user.points} баллов`);

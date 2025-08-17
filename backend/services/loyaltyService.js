@@ -36,10 +36,21 @@ async function addPoints(contactId, actionType) {
 
 function calculateStatus(points) {
   // Логика расчета статуса по баллам
-  if (points >= 100) return 'VIP';
-  if (points >= 50) return 'Gold';
-  if (points >= 20) return 'Silver';
-  return 'Bronze';
+  if (points >= 3000) return 'Платина';
+  if (points >= 1500) return 'Золото';
+  if (points >= 500) return 'Серебро';
+  return 'Бронза';
 }
 
-module.exports = { addPoints, calculateStatus, POINTS_CONFIG };
+// Расчет процента кэшбэка по статусу
+function calculateCashbackRate(status) {
+  const cashbackRates = {
+    'Бронза': 5,
+    'Серебро': 10,
+    'Золото': 15,
+    'Платина': 20
+  };
+  return cashbackRates[status] || 5; // По умолчанию 5% для Бронзы
+}
+
+module.exports = { addPoints, calculateStatus, calculateCashbackRate, POINTS_CONFIG };

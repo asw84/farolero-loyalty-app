@@ -23,7 +23,8 @@ async function autodetectCustomFields(entityType = 'contacts') {
             'TELEGRAM_ID_FIELD_ID': ['telegram', 'telegram_id', 'телеграм', 'тг'],
             'POINTS_FIELD_ID': ['points', 'баллы', 'балл', 'очки', 'point'],
             'VK_ID_FIELD_ID': ['vk', 'vk_id', 'вк', 'вконтакте', 'vkontakte'],
-            'INSTAGRAM_ID_FIELD_ID': ['instagram', 'instagram_id', 'инстаграм', 'инста', 'ig']
+            'INSTAGRAM_ID_FIELD_ID': ['instagram', 'instagram_id', 'инстаграм', 'инста', 'ig'],
+            'STATUS_FIELD_ID': ['status', 'статус', 'уровень', 'level', 'loyalty_status', 'лояльность']
         };
         
         for (const [configKey, patterns] of Object.entries(searchPatterns)) {

@@ -19,7 +19,7 @@ class UserModule {
         try {
             this.logger.debug(`Finding user by telegramId: ${telegramId}`);
             
-            const stmt = this.db.prepare('SELECT * FROM users WHERE telegram_id = ?');
+            const stmt = this.db.prepare('SELECT * FROM users WHERE telegram_user_id = ?');
             const user = stmt.get(telegramId);
             
             if (user) {
@@ -64,11 +64,10 @@ class UserModule {
             }
 
             const stmt = this.db.prepare(`
-                INSERT INTO users (telegram_id, first_name, last_name, username, points, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO users (telegram_user_id, first_name, last_name, username, points, registered_at)
+                VALUES (?, ?, ?, ?, ?, datetime('now'))
             `);
 
-            const createdAt = Math.floor(Date.now() / 1000);
             const initialPoints = 100; // Welcome bonus
 
             const result = stmt.run(
@@ -76,8 +75,7 @@ class UserModule {
                 firstName,
                 lastName,
                 username,
-                initialPoints,
-                createdAt
+                initialPoints
             );
 
             const newUser = {
@@ -87,7 +85,7 @@ class UserModule {
                 lastName,
                 username,
                 points: initialPoints,
-                createdAt
+                createdAt: new Date().toISOString()
             };
 
             this.logger.info('User created successfully', { userId: newUser.id, telegramId });
@@ -215,15 +213,15 @@ class UserModule {
     formatUser(user) {
         return {
             id: user.id,
-            telegramId: user.telegram_id,
+            telegramId: user.telegram_user_id,
             firstName: user.first_name,
             lastName: user.last_name || '',
             username: user.username || '',
             points: user.points || 0,
-            vkId: user.vk_id || null,
-            instagramId: user.instagram_id || null,
-            createdAt: user.created_at,
-            updatedAt: user.updated_at || user.created_at
+            vkId: user.vk_user_id || null,
+            instagramId: user.instagram_user_id || null,
+            createdAt: user.registered_at,
+            updatedAt: user.updated_at || user.registered_at
         };
     }
 

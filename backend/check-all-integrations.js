@@ -151,15 +151,15 @@ const instagramConfig = {
 };
 
 let instagramScore = 0;
-if (instagramConfig.APP_ID && instagramConfig.APP_ID !== 'YOUR_INSTAGRAM_APP_ID') {
-    logSuccess(`INSTAGRAM_APP_ID настроен`);
+if (instagramConfig.APP_ID && instagramConfig.APP_ID !== 'YOUR_FACEBOOK_APP_ID') {
+    logSuccess(`INSTAGRAM_APP_ID настроен (Facebook App ID)`);
     instagramScore += 40;
 } else {
     logError('INSTAGRAM_APP_ID не настроен (placeholder)');
 }
 
-if (instagramConfig.APP_SECRET && instagramConfig.APP_SECRET !== 'YOUR_INSTAGRAM_APP_SECRET') {
-    logSuccess('INSTAGRAM_APP_SECRET настроен');
+if (instagramConfig.APP_SECRET && instagramConfig.APP_SECRET !== 'YOUR_FACEBOOK_APP_SECRET') {
+    logSuccess('INSTAGRAM_APP_SECRET настроен (Facebook App Secret)');
     instagramScore += 40;
 } else {
     logError('INSTAGRAM_APP_SECRET не настроен (placeholder)');
@@ -265,7 +265,7 @@ if (vkScore < 100 && vkScore >= 60) {
 }
 
 if (instagramScore < 50) {
-    console.log('📸 2. Instagram: Создайте приложение в developers.facebook.com');
+    console.log('📸 2. Instagram: Создайте приложение в developers.facebook.com (Instagram API)');
 }
 
 if (amocrmScore < 100) {

@@ -2,7 +2,7 @@
 // ВЕРСИЯ С ОТЛАДКОЙ
 
 const amocrmClient = require('../amocrm/apiClient');
-const { POINTS_FIELD_ID, TELEGRAM_ID_FIELD_ID, VK_ID_FIELD_ID } = require('../config');
+const { POINTS_FIELD_ID, TELEGRAM_ID_FIELD_ID, VK_ID_FIELD_ID, STATUS_FIELD_ID } = require('../config');
 
 async function findContactByTelegramId(telegramId) {
     const contact = await amocrmClient.findContactByTelegramId(telegramId);
@@ -98,9 +98,51 @@ async function getCustomField(contactId, fieldName) {
     }
 }
 
+/**
+ * Обновляет статус пользователя в AmoCRM
+ * @param {string} telegramId - Telegram ID пользователя
+ * @param {string} status - Новый статус пользователя
+ * @returns {Promise<boolean>} - Результат обновления
+ */
+async function updateUserStatus(telegramId, status) {
+    try {
+        console.log(`[AmoCRM] Обновление статуса для ${telegramId}: ${status}`);
+        
+        // Находим контакт
+        const contact = await findContactByTelegramId(telegramId);
+        if (!contact) {
+            console.log(`[AmoCRM] ❌ Контакт с Telegram ID ${telegramId} не найден`);
+            return false;
+        }
+        
+        // Проверяем, настроено ли поле статуса
+        if (!STATUS_FIELD_ID || STATUS_FIELD_ID === '000000') {
+            console.log(`[AmoCRM] ⚠️ STATUS_FIELD_ID не настроен. Пропускаем обновление статуса.`);
+            return false;
+        }
+        
+        // Обновляем статус
+        const updateResult = await amocrmClient.updateContact(contact.id, {
+            [STATUS_FIELD_ID]: status
+        });
+        
+        if (updateResult) {
+            console.log(`[AmoCRM] ✅ Статус обновлен: ${telegramId} → ${status}`);
+            return true;
+        } else {
+            console.log(`[AmoCRM] ❌ Ошибка при обновлении статуса для ${telegramId}`);
+            return false;
+        }
+        
+    } catch (error) {
+        console.error(`[AmoCRM] ❌ Ошибка при обновлении статуса:`, error);
+        return false;
+    }
+}
+
 module.exports = {
     findContactByTelegramId,
     extractPointsFromContact,
-    findByTelegramId,
-    getCustomField,
+    updateUserStatus,
+    getCustomField
 };

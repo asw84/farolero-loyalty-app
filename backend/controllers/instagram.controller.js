@@ -23,13 +23,16 @@ async function initiateLogin(req, res) {
             });
         }
 
-        // Создаем URL авторизации Instagram
-        const authUrl = new URL('https://api.instagram.com/oauth/authorize');
+        // Создаем URL авторизации Instagram (исправлено на актуальный Facebook Graph API)
+        const authUrl = new URL('https://www.facebook.com/v23.0/dialog/oauth');
         authUrl.searchParams.set('client_id', INSTAGRAM_APP_ID);
         authUrl.searchParams.set('redirect_uri', INSTAGRAM_REDIRECT_URI);
-        authUrl.searchParams.set('scope', 'user_profile,user_media');
+        authUrl.searchParams.set('scope', 'instagram_basic,instagram_content_publish,instagram_manage_insights');
         authUrl.searchParams.set('response_type', 'code');
-        authUrl.searchParams.set('state', JSON.stringify({ telegram_user_id: tg_user_id }));
+        authUrl.searchParams.set('state', JSON.stringify({ 
+            telegram_user_id: tg_user_id,
+            nonce: require('crypto').randomUUID() // Добавлен nonce для безопасности
+        }));
 
         // Перенаправляем на Instagram авторизацию
         return res.redirect(authUrl.toString());

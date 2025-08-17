@@ -17,9 +17,8 @@ router.get('/vk/login', (req, res) => {
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('v', '5.199');
   authUrl.searchParams.set('display', 'page');
-  authUrl.searchParams.set('scope', 'offline');
   authUrl.searchParams.set('state', state);
-
+  console.log('VK OAuth URL:', authUrl.toString());
   return res.redirect(authUrl.toString());
 });
 

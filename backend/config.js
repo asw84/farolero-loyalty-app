@@ -4,6 +4,7 @@ const TELEGRAM_ID_FIELD_ID = '986901';
 const POINTS_FIELD_ID = '986893';
 const VK_ID_FIELD_ID = '986979';
 const INSTAGRAM_ID_FIELD_ID = '986981';
+const STATUS_FIELD_ID = process.env.STATUS_FIELD_ID || '000000'; // TODO: Настроить через autodetect-fields.js
 
 const QTICKETS_DISCOUNTS = [
     { points: 100, discountId: '51147', value: 100 },
@@ -22,6 +23,7 @@ module.exports = {
     POINTS_FIELD_ID,
     VK_ID_FIELD_ID,
     INSTAGRAM_ID_FIELD_ID,
+    STATUS_FIELD_ID,
     QTICKETS_DISCOUNTS,
     STORAGE_MODE,
     APP_BASE_URL,

@@ -33,6 +33,7 @@ const tables = [
             instagram_username TEXT UNIQUE,
             vk_user_id TEXT UNIQUE,
             points INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'Бронза',
             pending_points_deduction INTEGER DEFAULT 0,
             referrer_id INTEGER,
             synced_with_amo BOOLEAN DEFAULT 0,

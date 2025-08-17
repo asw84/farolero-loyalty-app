@@ -27,9 +27,7 @@ function getDbConnection() {
 /**
  * Initializes the database tables if they don't exist.
  */
-function initializeDatabase() {
-    const db = getDbConnection();
-
+async function initializeDatabase() {
     const createUserTableSql = `
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,6 +36,7 @@ function initializeDatabase() {
             instagram_username TEXT UNIQUE,
             vk_user_id TEXT UNIQUE,
             points INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'Бронза',
             pending_points_deduction INTEGER DEFAULT 0,
             referrer_id INTEGER,
             synced_with_amo BOOLEAN DEFAULT 0,
@@ -61,7 +60,7 @@ function initializeDatabase() {
         CREATE TABLE IF NOT EXISTS referrals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             referrer_telegram_id TEXT NOT NULL,
-            referee_telegram_id TEXT NOT NULL,
+            referee_telegram_id TEXT,
             referral_code TEXT UNIQUE NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             activated_at DATETIME,
@@ -91,42 +90,43 @@ function initializeDatabase() {
             recency_score INTEGER CHECK(recency_score >= 1 AND recency_score <= 5),
             frequency_score INTEGER CHECK(frequency_score >= 1 AND frequency_score <= 5),
             monetary_score INTEGER CHECK(monetary_score >= 1 AND monetary_score <= 5),
-            segment_name TEXT,
+            segment_name TEXT NOT NULL,
             calculated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_telegram_id) REFERENCES users (telegram_user_id)
         );
     `;
 
-    db.run(createUserTableSql, (err) => {
-        if (err) console.error("Error creating 'users' table:", err.message);
-        else console.log("'users' table is ready.");
-    });
+    try {
+        await dbRun(createUserTableSql);
+        console.log("'users' table is ready.");
+        
+        await dbRun(createActivityTableSql);
+        console.log("'activity' table is ready.");
+        
+        await dbRun(createReferralsTableSql);
+        console.log("'referrals' table is ready.");
+        
+        await dbRun(createPurchasesTableSql);
+        console.log("'purchases' table is ready.");
+        
+        await dbRun(createRfmSegmentsTableSql);
+        console.log("'rfm_segments' table is ready.");
 
-    db.run(createActivityTableSql, (err) => {
-        if (err) console.error("Error creating 'activity' table:", err.message);
-        else console.log("'activity' table is ready.");
-    });
-
-    db.run(createReferralsTableSql, (err) => {
-        if (err) console.error("Error creating 'referrals' table:", err.message);
-        else console.log("'referrals' table is ready.");
-    });
-
-    db.run(createPurchasesTableSql, (err) => {
-        if (err) console.error("Error creating 'purchases' table:", err.message);
-        else console.log("'purchases' table is ready.");
-    });
-
-    db.run(createRfmSegmentsTableSql, (err) => {
-        if (err) console.error("Error creating 'rfm_segments' table:", err.message);
-        else console.log("'rfm_segments' table is ready.");
-    });
-
-    // Создаем индексы для быстрого поиска
-    db.run('CREATE INDEX IF NOT EXISTS idx_referral_code ON referrals(referral_code);');
-    db.run('CREATE INDEX IF NOT EXISTS idx_referrer ON referrals(referrer_telegram_id);');
-    db.run('CREATE INDEX IF NOT EXISTS idx_user_purchases ON purchases(user_telegram_id);');
-    db.run('CREATE INDEX IF NOT EXISTS idx_purchase_date ON purchases(purchase_date);');
+        // Создаем индексы для быстрого поиска
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_referral_code ON referrals(referral_code);');
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_referrer ON referrals(referrer_telegram_id);');
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_user_purchases ON purchases(user_telegram_id);');
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_purchase_date ON purchases(purchase_date);');
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_rfm_user ON rfm_segments(user_telegram_id);');
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_rfm_segment ON rfm_segments(segment_name);');
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_rfm_calculated ON rfm_segments(calculated_at);');
+        
+        console.log("✅ Все таблицы и индексы созданы успешно!");
+        return true;
+    } catch (error) {
+        console.error("❌ Ошибка создания таблиц:", error);
+        throw error;
+    }
 }
 
 // Helper function to make db operations Promises
@@ -181,6 +181,10 @@ async function findUserByTelegramId(telegramId) {
     return await dbGet(`SELECT * FROM users WHERE telegram_user_id = ?`, [telegramId]);
 }
 
+async function findUserById(userId) {
+    return await dbGet(`SELECT * FROM users WHERE id = ?`, [userId]);
+}
+
 async function findOrCreateUser(identifier, source_field, referrerId = null) {
     let user = await dbGet(`SELECT * FROM users WHERE ${source_field} = ?`, [identifier]);
     if (user) {
@@ -214,6 +218,53 @@ async function addPoints(user_id, points, source, activity_type) {
     });
 }
 
+/**
+ * Добавляет баллы пользователю по Telegram ID
+ * @param {string} telegramId - Telegram ID пользователя
+ * @param {number} points - Количество баллов для добавления
+ * @param {string} source - Источник баллов
+ * @param {string} activity_type - Тип активности
+ * @returns {Promise<Object>} - Результат операции
+ */
+async function addPointsByTelegramId(telegramId, points, source, activity_type) {
+    const db = getDbConnection();
+    return new Promise((resolve, reject) => {
+        db.serialize(async () => {
+            try {
+                await dbRun('BEGIN TRANSACTION;');
+                
+                // Получаем пользователя
+                const user = await dbGet('SELECT id FROM users WHERE telegram_user_id = ?', [telegramId]);
+                if (!user) {
+                    await dbRun('ROLLBACK;');
+                    return reject(new Error(`Пользователь с Telegram ID ${telegramId} не найден`));
+                }
+                
+                // Обновляем баллы
+                await dbRun('UPDATE users SET points = points + ? WHERE telegram_user_id = ?', [points, telegramId]);
+                
+                // Записываем активность
+                await dbRun('INSERT INTO activity (user_id, points_awarded, source, activity_type) VALUES (?, ?, ?, ?)', 
+                    [user.id, points, source, activity_type]);
+                
+                await dbRun('COMMIT;');
+                
+                resolve({
+                    success: true,
+                    userId: user.id,
+                    telegramId: telegramId,
+                    pointsAdded: points,
+                    newTotal: await dbGet('SELECT points FROM users WHERE telegram_user_id = ?', [telegramId])
+                });
+                
+            } catch (error) {
+                await dbRun('ROLLBACK;');
+                reject(error);
+            }
+        });
+    });
+}
+
 async function dbAll(sql, params = []) {
     const db = getDbConnection();
     return new Promise((resolve, reject) => {
@@ -224,10 +275,84 @@ async function dbAll(sql, params = []) {
     });
 }
 
-async function addPurchase(telegramId, amount, source = 'qtickets', orderId = null) {
+/**
+ * Списать баллы у пользователя
+ * @param {number} userId - ID пользователя
+ * @param {number} points - Количество баллов для списания
+ * @param {string} source - Источник списания
+ * @param {string} activity_type - Тип активности
+ * @returns {Promise<void>}
+ */
+async function deductPoints(userId, points, source, activity_type) {
+    const db = getDbConnection();
+    return new Promise((resolve, reject) => {
+        db.serialize(async () => {
+            try {
+                await dbRun('BEGIN TRANSACTION;');
+                
+                // Проверяем достаточность баллов
+                const user = await dbGet('SELECT points FROM users WHERE id = ?', [userId]);
+                if (!user) {
+                    await dbRun('ROLLBACK;');
+                    return reject(new Error(`Пользователь с ID ${userId} не найден`));
+                }
+                
+                if (user.points < points) {
+                    await dbRun('ROLLBACK;');
+                    return reject(new Error(`Недостаточно баллов. Есть: ${user.points}, требуется: ${points}`));
+                }
+                
+                // Списываем баллы
+                await dbRun('UPDATE users SET points = points - ? WHERE id = ?', [points, userId]);
+                
+                // Записываем активность (отрицательное значение)
+                await dbRun('INSERT INTO activity (user_id, points_awarded, source, activity_type) VALUES (?, ?, ?, ?)', 
+                    [userId, -points, source, activity_type]);
+                
+                await dbRun('COMMIT;');
+                console.log(`✅ [Database] Списано ${points} баллов у пользователя ${userId}`);
+                resolve();
+            } catch (err) {
+                await dbRun('ROLLBACK;');
+                reject(err);
+            }
+        });
+    });
+}
+
+async function addPurchase(purchaseData) {
+    // Поддерживаем как старый формат (telegramId, amount, source, orderId), так и новый объект
+    if (typeof purchaseData === 'string') {
+        // Старый формат для совместимости
+        const [telegramId, amount, source = 'qtickets', orderId = null] = arguments;
+        return await dbRun(
+            'INSERT INTO purchases (user_telegram_id, amount, source, order_id) VALUES (?, ?, ?, ?)',
+            [telegramId, amount, source, orderId]
+        );
+    }
+    
+    // Новый формат с расширенными данными
+    const {
+        user_id,
+        event_id,
+        event_name,
+        total_price,
+        cashback_used = 0,
+        final_price,
+        purchase_date = new Date().toISOString(),
+        source = 'qtickets'
+    } = purchaseData;
+    
+    // Получаем telegram_user_id по user_id
+    const user = await dbGet('SELECT telegram_user_id FROM users WHERE id = ?', [user_id]);
+    if (!user) {
+        throw new Error(`Пользователь с ID ${user_id} не найден`);
+    }
+    
     return await dbRun(
-        'INSERT INTO purchases (user_telegram_id, amount, source, order_id) VALUES (?, ?, ?, ?)',
-        [telegramId, amount, source, orderId]
+        `INSERT INTO purchases (user_telegram_id, amount, source, event_id, event_name, cashback_used, final_price, purchase_date) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [user.telegram_user_id, total_price, source, event_id, event_name, cashback_used, final_price, purchase_date]
     );
 }
 
@@ -245,9 +370,12 @@ module.exports = {
     dbGet,
     dbAll,
     findUserByTelegramId,
+    findUserById,
     findOrCreateUser,
     updateUser,
     addPoints,
+    addPointsByTelegramId,
+    deductPoints,
     addPurchase,
     getUserPurchases,
     setPendingPointsDeduction,

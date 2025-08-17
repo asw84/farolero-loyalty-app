@@ -49,13 +49,21 @@ async function getAccessToken(code) {
     params.append('redirect_uri', INSTAGRAM_REDIRECT_URI);
     params.append('code', code);
 
-    const response = await axios.post('https://api.instagram.com/oauth/access_token', params, {
+    // Используем Facebook Graph API для получения токена
+    const response = await axios.post('https://graph.facebook.com/v23.0/oauth/access_token', params, {
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        },
+        timeout: 30000 // Добавлен timeout для надежности
     });
 
-    return response.data.access_token;
+    // Facebook Graph API возвращает access_token
+    if (response.data.access_token) {
+        return response.data.access_token;
+    } else {
+        throw new Error(`Facebook Graph API error: ${JSON.stringify(response.data)}`);
+    }
 }
 
 /**
@@ -64,13 +72,29 @@ async function getAccessToken(code) {
  * @returns {Promise<object>} Профиль пользователя (id, username).
  */
 async function getInstagramProfile(accessToken) {
-    const response = await axios.get('https://graph.instagram.com/me', {
+    // Сначала получаем Instagram Business Account ID через Facebook Graph API
+    const response = await axios.get('https://graph.facebook.com/v23.0/me/accounts', {
+        params: {
+            access_token: accessToken
+        }
+    });
+    
+    // Находим Instagram Business Account
+    const instagramAccount = response.data.data.find(account => account.instagram_business_account);
+    
+    if (!instagramAccount || !instagramAccount.instagram_business_account) {
+        throw new Error('Instagram Business Account не найден');
+    }
+    
+    // Получаем детали Instagram аккаунта
+    const instagramResponse = await axios.get(`https://graph.facebook.com/v23.0/${instagramAccount.instagram_business_account.id}`, {
         params: {
             fields: 'id,username',
             access_token: accessToken
         }
     });
-    return response.data;
+    
+    return instagramResponse.data;
 }
 
 module.exports = {

@@ -63,6 +63,10 @@ async function testAchievementsSystem() {
         // 7. Добавляем рефералов для тестирования
         console.log('7️⃣ Тест достижений по рефералам...');
         const { dbRun } = require('./database');
+        
+        // Создаем пользователя-реферала
+        await findOrCreateUser('referee_1', 'telegram_user_id');
+        
         await dbRun(`
             INSERT OR IGNORE INTO referrals 
             (referrer_telegram_id, referee_telegram_id, referral_code, activated_at, bonus_paid)

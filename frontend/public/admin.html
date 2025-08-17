@@ -30,7 +30,79 @@
             <div class="card mt-3">
                 <div class="card-body">
                     <h5 class="card-title">Actions</h5>
-                    <button id="top-users-btn" class="btn btn-info">View Top Users</button>
+                    <button id="top-users-btn" class="btn btn-info me-2">View Top Users</button>
+                    <button id="rfm-dashboard-btn" class="btn btn-success">RFM Analytics</button>
+                </div>
+            </div>
+
+            <!-- RFM Analytics Card -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">📊 RFM Analytics Dashboard</h5>
+                        <button id="recalculate-rfm-btn" class="btn btn-warning">Recalculate RFM</button>
+                    </div>
+                    
+                    <div id="rfm-loading" class="text-center" style="display: none;">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Loading RFM data...</p>
+                    </div>
+                    
+                    <div id="rfm-content" style="display: none;">
+                        <!-- RFM Summary Stats -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body text-center">
+                                        <h3 id="total-users-rfm">0</h3>
+                                        <p class="mb-0">Total Analyzed Users</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <h3 id="champions-count">0</h3>
+                                        <p class="mb-0">Champions</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-warning text-dark">
+                                    <div class="card-body text-center">
+                                        <h3 id="at-risk-count">0</h3>
+                                        <p class="mb-0">At Risk</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RFM Segments Table -->
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Segment</th>
+                                        <th>Users</th>
+                                        <th>Percentage</th>
+                                        <th>Avg Monetary</th>
+                                        <th>Avg Frequency</th>
+                                        <th>Strategy</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rfm-segments-table">
+                                    <!-- Segments will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div id="rfm-error" class="alert alert-danger" style="display: none;">
+                        <!-- Error messages will be shown here -->
+                    </div>
                 </div>
             </div>
 
@@ -99,6 +171,21 @@
                 </div>
             </div>
         </div>
+
+        <!-- RFM Segment Users Modal -->
+        <div class="modal fade" id="rfm-segment-modal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="rfm-segment-modal-title">Segment Users</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="rfm-segment-content">
+                        <!-- Segment users will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -117,6 +204,16 @@
         const userDetailsContent = document.getElementById('user-details-content');
         const topUsersModal = new bootstrap.Modal(document.getElementById('top-users-modal'));
         const topUsersContent = document.getElementById('top-users-content');
+        
+        // RFM Dashboard Elements
+        const rfmDashboardBtn = document.getElementById('rfm-dashboard-btn');
+        const recalculateRfmBtn = document.getElementById('recalculate-rfm-btn');
+        const rfmLoading = document.getElementById('rfm-loading');
+        const rfmContent = document.getElementById('rfm-content');
+        const rfmError = document.getElementById('rfm-error');
+        const rfmSegmentModal = new bootstrap.Modal(document.getElementById('rfm-segment-modal'));
+        const rfmSegmentContent = document.getElementById('rfm-segment-content');
+        const rfmSegmentModalTitle = document.getElementById('rfm-segment-modal-title');
 
         function showAdminPanel() {
             loginSection.style.display = 'none';
@@ -278,6 +375,205 @@
                 adjustResponse.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
             }
         });
+
+        // RFM Dashboard Functionality
+        rfmDashboardBtn.addEventListener('click', loadRFMDashboard);
+        recalculateRfmBtn.addEventListener('click', recalculateRFM);
+
+        async function loadRFMDashboard() {
+            showRFMLoading();
+            const token = localStorage.getItem('adminToken');
+            
+            try {
+                const response = await fetch('/api/analytics/rfm/dashboard', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    displayRFMData(result.data);
+                } else {
+                    showRFMError(result.error || 'Failed to load RFM data');
+                }
+            } catch (error) {
+                showRFMError(`Error: ${error.message}`);
+            }
+        }
+
+        async function recalculateRFM() {
+            if (!confirm('Recalculate RFM for all users? This may take a few minutes.')) {
+                return;
+            }
+            
+            showRFMLoading();
+            const token = localStorage.getItem('adminToken');
+            
+            try {
+                const response = await fetch('/api/analytics/rfm/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    // Reload dashboard after recalculation
+                    setTimeout(loadRFMDashboard, 1000);
+                } else {
+                    showRFMError(result.error || 'Failed to recalculate RFM');
+                }
+            } catch (error) {
+                showRFMError(`Error: ${error.message}`);
+            }
+        }
+
+        function showRFMLoading() {
+            rfmLoading.style.display = 'block';
+            rfmContent.style.display = 'none';
+            rfmError.style.display = 'none';
+        }
+
+        function showRFMError(message) {
+            rfmLoading.style.display = 'none';
+            rfmContent.style.display = 'none';
+            rfmError.style.display = 'block';
+            rfmError.innerHTML = message;
+        }
+
+        function displayRFMData(data) {
+            rfmLoading.style.display = 'none';
+            rfmError.style.display = 'none';
+            rfmContent.style.display = 'block';
+            
+            // Update summary stats
+            document.getElementById('total-users-rfm').textContent = data.summary.totalUsers || 0;
+            
+            const champions = data.summary.segments.find(s => s.name === 'Champions');
+            document.getElementById('champions-count').textContent = champions ? champions.count : 0;
+            
+            const atRisk = data.summary.segments.find(s => s.name === 'At Risk');
+            document.getElementById('at-risk-count').textContent = atRisk ? atRisk.count : 0;
+            
+            // Update segments table
+            const tableBody = document.getElementById('rfm-segments-table');
+            tableBody.innerHTML = '';
+            
+            if (data.summary.segments && data.summary.segments.length > 0) {
+                data.summary.segments.forEach(segment => {
+                    const segmentInfo = data.segmentDefinitions[segment.name];
+                    const row = document.createElement('tr');
+                    
+                    const segmentColor = segmentInfo ? segmentInfo.color : '#6c757d';
+                    const strategy = segmentInfo ? segmentInfo.strategy : 'No strategy defined';
+                    
+                    row.innerHTML = `
+                        <td>
+                            <span class="badge" style="background-color: ${segmentColor}; color: white;">
+                                ${segment.name}
+                            </span>
+                            <br><small class="text-muted">${segmentInfo ? segmentInfo.description : ''}</small>
+                        </td>
+                        <td><strong>${segment.count}</strong></td>
+                        <td><span class="badge bg-secondary">${segment.percentage}%</span></td>
+                        <td>₽${segment.averages.monetary.toLocaleString()}</td>
+                        <td>${segment.averages.frequency}</td>
+                        <td><small>${strategy}</small></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewSegmentUsers('${segment.name}')">
+                                View Users
+                            </button>
+                        </td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No RFM data available. Try recalculating.</td></tr>';
+            }
+        }
+
+        async function viewSegmentUsers(segmentName) {
+            const token = localStorage.getItem('adminToken');
+            
+            try {
+                rfmSegmentModalTitle.textContent = `${segmentName} Segment Users`;
+                rfmSegmentContent.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Loading users...</p></div>';
+                rfmSegmentModal.show();
+                
+                const response = await fetch(`/api/analytics/rfm/segment/${encodeURIComponent(segmentName)}?limit=50`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    let content = `
+                        <div class="mb-3">
+                            <h6>Segment Info:</h6>
+                            <p><strong>Total Users:</strong> ${result.data.users.length}</p>
+                            <p><strong>Strategy:</strong> ${result.data.segment.strategy}</p>
+                        </div>
+                    `;
+                    
+                    if (result.data.users.length > 0) {
+                        content += `
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Telegram ID</th>
+                                            <th>Points</th>
+                                            <th>RFM Scores</th>
+                                            <th>Monetary Value</th>
+                                            <th>Frequency</th>
+                                            <th>Recency (days)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        result.data.users.forEach(user => {
+                            content += `
+                                <tr>
+                                    <td>${user.telegramId}</td>
+                                    <td>${user.points}</td>
+                                    <td>
+                                        <span class="badge bg-info">R${user.rfmScores.recency}</span>
+                                        <span class="badge bg-success">F${user.rfmScores.frequency}</span>
+                                        <span class="badge bg-warning">M${user.rfmScores.monetary}</span>
+                                    </td>
+                                    <td>₽${user.metrics.monetaryValue.toLocaleString()}</td>
+                                    <td>${user.metrics.frequencyCount}</td>
+                                    <td>${user.metrics.recencyDays}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        content += '</tbody></table></div>';
+                    } else {
+                        content += '<p class="text-muted">No users in this segment.</p>';
+                    }
+                    
+                    rfmSegmentContent.innerHTML = content;
+                } else {
+                    rfmSegmentContent.innerHTML = `<div class="alert alert-danger">Error: ${result.error || 'Failed to load segment users'}</div>`;
+                }
+            } catch (error) {
+                rfmSegmentContent.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-load RFM dashboard when admin panel is shown
+        if (token) {
+            setTimeout(loadRFMDashboard, 500);
+        }
     </script>
 </body>
 </html>

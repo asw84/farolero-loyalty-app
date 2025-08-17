@@ -206,8 +206,6 @@ class DailyTasksService {
             const newProgress = userTask.current_progress + increment;
             const isCompleted = newProgress >= userTask.target_value;
 
-            await dbRun('BEGIN TRANSACTION');
-
             // Обновляем прогресс
             await dbRun(`
                 UPDATE user_daily_tasks 
@@ -260,11 +258,9 @@ class DailyTasksService {
                 }
             }
 
-            await dbRun('COMMIT');
             return result;
 
         } catch (error) {
-            await dbRun('ROLLBACK');
             console.error('❌ [DailyTasksService] Ошибка обновления прогресса:', error);
             throw error;
         }

@@ -230,8 +230,6 @@ class AchievementsService {
      */
     async unlockAchievement(telegramId, achievement) {
         try {
-            await dbRun('BEGIN TRANSACTION');
-
             // Записываем разблокировку достижения
             await dbRun(`
                 INSERT OR REPLACE INTO user_achievements 
@@ -262,8 +260,6 @@ class AchievementsService {
                 console.warn('⚠️ Ошибка синхронизации с AmoCRM:', amoError.message);
             }
 
-            await dbRun('COMMIT');
-
             return {
                 success: true,
                 achievement,
@@ -271,7 +267,6 @@ class AchievementsService {
             };
 
         } catch (error) {
-            await dbRun('ROLLBACK');
             console.error('❌ [AchievementsService] Ошибка разблокировки достижения:', error);
             throw error;
         }
