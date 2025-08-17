@@ -157,3 +157,174 @@ export const getAmoCRMContact = async (telegramId: number | string) => {
     return { success: false, message: 'Ошибка сети. Не удалось получить контакт из AmoCRM.' };
   }
 };
+
+// ===============================================
+// API функции для геймификации и достижений
+// ===============================================
+
+// Получить все достижения пользователя
+export const fetchUserAchievements = async (telegramId: number | string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/achievements/user/${telegramId}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user achievements:', error);
+    return { success: false, data: [] };
+  }
+};
+
+// Получить статистику достижений пользователя
+export const fetchAchievementsStats = async (telegramId: number | string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/achievements/stats/${telegramId}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch achievements stats:', error);
+    return { success: false, data: {} };
+  }
+};
+
+// Получить ежедневные задания пользователя
+export const fetchDailyTasks = async (telegramId: number | string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/daily-tasks/${telegramId}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch daily tasks:', error);
+    return { success: false, data: { tasks: [], completed_count: 0, total_count: 0 } };
+  }
+};
+
+// Выполнить ежедневный вход
+export const performDailyCheckin = async (telegramId: number | string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/daily-tasks/${telegramId}/checkin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to perform daily checkin:', error);
+    return { success: false, message: 'Ошибка выполнения ежедневного входа' };
+  }
+};
+
+// Обновить прогресс задания
+export const updateTaskProgress = async (telegramId: number | string, taskCode: string, increment = 1) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/daily-tasks/${telegramId}/progress`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ taskCode, increment }),
+    });
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to update task progress:', error);
+    return { success: false, message: 'Ошибка обновления прогресса' };
+  }
+};
+
+// Получить статистику стрика пользователя
+export const fetchUserStreak = async (telegramId: number | string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/daily-tasks/${telegramId}/streak`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user streak:', error);
+    return { success: false, data: { current_streak: 0, longest_streak: 0 } };
+  }
+};
+
+// Получить календарь активности пользователя
+export const fetchActivityCalendar = async (telegramId: number | string, period = '30') => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/activity-calendar/${telegramId}?period=${period}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch activity calendar:', error);
+    return { success: false, data: { calendar: [], stats: {} } };
+  }
+};
+
+// Получить месячную активность
+export const fetchMonthlyActivity = async (telegramId: number | string, year?: number, month?: number) => {
+  try {
+    const now = new Date();
+    const targetYear = year || now.getFullYear();
+    const targetMonth = month || (now.getMonth() + 1);
+    
+    const response = await fetch(`${API_BASE_URL}/api/activity-calendar/${telegramId}/month/${targetYear}/${targetMonth}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch monthly activity:', error);
+    return { success: false, data: { weeks: [], stats: {} } };
+  }
+};
+
+// Трекинг активности
+export const trackActivity = async (telegramId: number | string, activityType: string, data?: any) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/daily-tasks/track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ telegramId, activityType, data }),
+    });
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to track activity:', error);
+    return { success: false, message: 'Ошибка трекинга активности' };
+  }
+};
+
+// Проверить достижения пользователя
+export const checkAchievements = async (telegramId: number | string, triggerType?: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/achievements/check/${telegramId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ triggerType }),
+    });
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to check achievements:', error);
+    return { success: false, newlyUnlocked: [], totalUnlocked: 0 };
+  }
+};

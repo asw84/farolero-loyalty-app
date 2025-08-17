@@ -32,6 +32,10 @@ const activityRoutes = require('./routes/activity.routes');
 const referralRoutes = require('./routes/referral.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const healthRoutes = require('./routes/health.routes');
+const statusRoutes = require('./routes/status.routes');
+const achievementsRoutes = require('./routes/achievements.routes');
+const dailyTasksRoutes = require('./routes/daily-tasks.routes');
+const activityCalendarRoutes = require('./routes/activity-calendar.routes');
 const oauthRouter = require('./routes/oauth');
 const socialRouter = require('./routes/social');
 const authRouter = require('./routes/auth');
@@ -158,11 +162,18 @@ app.use('/api', socialRoutes);
 app.use('/api/amocrm', amocrmRoutes);
 app.use('/api', vkRoutes);
 app.use('/api', instagramRoutes);
+app.use('/api/instagram', require('./routes/instagram-activity.routes'));
 app.use('/api', vkOAuthRoutes);
 app.use('/api', vkConfigRoutes);
 app.use('/api', activityRoutes);
 app.use('/api', referralRoutes);
 app.use('/api', analyticsRoutes);
+app.use('/api/status', statusRoutes);
+app.use('/api/achievements', achievementsRoutes);
+app.use('/api/daily-tasks', dailyTasksRoutes);
+app.use('/api/activity-calendar', activityCalendarRoutes);
+app.use('/api/qtickets/cashback', require('./routes/qtickets-cashback.routes'));
+app.use('/api/purchases', require('./routes/purchase-history.routes'));
 app.use('/health', healthRoutes);
 app.use('/api/oauth', oauthRouter);
 app.use('/api/social', socialRouter);
@@ -188,7 +199,7 @@ app.listen(PORT, () => {
     
     // --- ПРОВЕРКА VK КОНФИГУРАЦИИ ---
     const vkValidator = new VKConfigValidator();
-    vkValidator.validateAtStartup();
+    //vkValidator.validateAtStartup();
     
     // Загружаем кеш прогулок при старте
     walkService.loadQticketsData();

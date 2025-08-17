@@ -3,6 +3,8 @@
 
 const { dbRun, dbGet, getDbConnection } = require('../database');
 const crypto = require('crypto');
+const statusService = require('./status.service');
+const achievementsService = require('./achievements.service');
 
 const REFERRAL_BONUSES = {
     REFERRER_BONUS: 50,  // Бонус для того, кто пригласил
@@ -147,6 +149,43 @@ async function activateReferralCode(referralCode, newUserTelegramId) {
                         'INSERT INTO activity (user_id, points_awarded, source, activity_type) VALUES (?, ?, ?, ?)',
                         [newUser.id, REFERRAL_BONUSES.REFEREE_BONUS, 'referral', 'welcome_bonus']
                     );
+                }
+
+                // Автоматически обновляем статусы обоих пользователей
+                try {
+                    const referrerStatusUpdate = await statusService.updateUserStatus(referral.referrer_telegram_id);
+                    const newUserStatusUpdate = await statusService.updateUserStatus(newUserTelegramId);
+                    
+                    if (referrerStatusUpdate.statusChanged) {
+                        console.log(`[ReferralService] 🎉 Статус реферера изменен: ${referrerStatusUpdate.oldStatus} → ${referrerStatusUpdate.newStatus}`);
+                    }
+                    
+                    if (newUserStatusUpdate.statusChanged) {
+                        console.log(`[ReferralService] 🎉 Статус нового пользователя изменен: ${newUserStatusUpdate.oldStatus} → ${newUserStatusUpdate.newStatus}`);
+                    }
+                } catch (statusError) {
+                    console.error('❌ [ReferralService] Ошибка при обновлении статусов:', statusError);
+                    // Не прерываем выполнение, статус обновится при следующем запросе
+                }
+
+                // Проверяем достижения для обоих пользователей
+                try {
+                    // Проверяем достижения реферера (за приглашение друзей)
+                    const referrerAchievements = await achievementsService.checkAndUnlockAchievements(referral.referrer_telegram_id, 'referral');
+                    if (referrerAchievements.totalUnlocked > 0) {
+                        console.log(`[ReferralService] 🏆 Реферер разблокировал ${referrerAchievements.totalUnlocked} достижений`);
+                        referrerAchievements.newlyUnlocked.forEach(achievement => {
+                            console.log(`[ReferralService] 🏆 ${achievement.name} (+${achievement.points_reward} баллов)`);
+                        });
+                    }
+
+                    // Проверяем достижения нового пользователя (за баллы и статус)
+                    const newUserAchievements = await achievementsService.checkAndUnlockAchievements(newUserTelegramId, 'points');
+                    if (newUserAchievements.totalUnlocked > 0) {
+                        console.log(`[ReferralService] 🏆 Новый пользователь разблокировал ${newUserAchievements.totalUnlocked} достижений`);
+                    }
+                } catch (achievementError) {
+                    console.warn('[ReferralService] ⚠️ Ошибка проверки достижений:', achievementError.message);
                 }
 
                 // Помечаем бонус как выплаченный
