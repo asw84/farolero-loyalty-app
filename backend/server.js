@@ -107,7 +107,7 @@ app.get('/health', async (req, res) => {
         try {
             const amocrmClient = require('./amocrm/apiClient');
             const tokens = amocrmClient.getTokens();
-            if (tokens.refresh_token) {
+            if (tokens && tokens.refresh_token) {
                 healthStatus.checks.amocrm_tokens = 'OK';
             } else {
                 healthStatus.checks.amocrm_tokens = 'WARNING: No refresh token';

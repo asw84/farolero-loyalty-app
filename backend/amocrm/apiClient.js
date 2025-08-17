@@ -268,5 +268,9 @@ module.exports = {
     getAuthorizedClient,
     getInitialToken,
     getAuthUrl,
-    exchangeCodeForTokens
+    exchangeCodeForTokens,
+    getTokens,
+    saveTokens,
+    isTokenExpired,
+    refreshTokens
 };

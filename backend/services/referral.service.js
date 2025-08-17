@@ -18,7 +18,7 @@ const REFERRAL_BONUSES = {
  */
 function generateReferralCode(telegramId) {
     const hash = crypto.createHash('sha256')
-        .update(telegramId + Date.now() + Math.random())
+        .update(String(telegramId) + String(Date.now()) + String(Math.random()))
         .digest('hex');
     return 'FAR' + hash.substring(0, 8).toUpperCase();
 }
