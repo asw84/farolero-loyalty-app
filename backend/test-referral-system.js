@@ -15,8 +15,16 @@ const TEST_USERS = {
 async function cleanupTestData() {
     try {
         const db = getDbConnection();
-        await dbRun('DELETE FROM referrals WHERE referrer_telegram_id IN (?, ?)', [TEST_USERS.referrer, TEST_USERS.referee]);
+        // Отключаем foreign key constraints для очистки
+        await dbRun('PRAGMA foreign_keys = OFF');
+        
+        // Удаляем в правильном порядке
+        await dbRun('DELETE FROM activity WHERE user_id IN (SELECT id FROM users WHERE telegram_user_id IN (?, ?))', [TEST_USERS.referrer, TEST_USERS.referee]);
+        await dbRun('DELETE FROM referrals WHERE referrer_telegram_id IN (?, ?) OR referee_telegram_id IN (?, ?)', [TEST_USERS.referrer, TEST_USERS.referee, TEST_USERS.referrer, TEST_USERS.referee]);
         await dbRun('DELETE FROM users WHERE telegram_user_id IN (?, ?)', [TEST_USERS.referrer, TEST_USERS.referee]);
+        
+        // Включаем foreign key constraints обратно
+        await dbRun('PRAGMA foreign_keys = ON');
         console.log('🧹 Тестовые данные очищены');
     } catch (error) {
         console.error('❌ Ошибка очистки:', error.message);
@@ -26,8 +34,8 @@ async function cleanupTestData() {
 // Создание тестовых пользователей
 async function createTestUsers() {
     try {
-        await dbRun('INSERT INTO users (telegram_user_id, first_name, points) VALUES (?, ?, ?)', [TEST_USERS.referrer, 'Test Referrer', 100]);
-        await dbRun('INSERT INTO users (telegram_user_id, first_name, points) VALUES (?, ?, ?)', [TEST_USERS.referee, 'Test Referee', 0]);
+        await dbRun('INSERT OR REPLACE INTO users (telegram_user_id, points, status) VALUES (?, ?, ?)', [TEST_USERS.referrer, 100, 'Бронза']);
+        await dbRun('INSERT OR REPLACE INTO users (telegram_user_id, points, status) VALUES (?, ?, ?)', [TEST_USERS.referee, 0, 'Бронза']);
         console.log('👥 Тестовые пользователи созданы');
     } catch (error) {
         console.error('❌ Ошибка создания пользователей:', error.message);

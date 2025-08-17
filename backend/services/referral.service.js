@@ -52,8 +52,8 @@ async function createReferralCode(telegramId) {
 
             try {
                 await dbRun(
-                    'INSERT INTO referrals (referrer_telegram_id, referral_code) VALUES (?, ?)',
-                    [telegramId, referralCode]
+                    'INSERT INTO referrals (referrer_telegram_id, referral_code, referee_telegram_id) VALUES (?, ?, ?)',
+                    [telegramId, referralCode, null]
                 );
                 console.log(`[REFERRAL] ✅ Создан новый реферальный код: ${referralCode} для ${telegramId}`);
                 return referralCode;
@@ -168,26 +168,6 @@ async function activateReferralCode(referralCode, newUserTelegramId) {
                     // Не прерываем выполнение, статус обновится при следующем запросе
                 }
 
-                // Проверяем достижения для обоих пользователей
-                try {
-                    // Проверяем достижения реферера (за приглашение друзей)
-                    const referrerAchievements = await achievementsService.checkAndUnlockAchievements(referral.referrer_telegram_id, 'referral');
-                    if (referrerAchievements.totalUnlocked > 0) {
-                        console.log(`[ReferralService] 🏆 Реферер разблокировал ${referrerAchievements.totalUnlocked} достижений`);
-                        referrerAchievements.newlyUnlocked.forEach(achievement => {
-                            console.log(`[ReferralService] 🏆 ${achievement.name} (+${achievement.points_reward} баллов)`);
-                        });
-                    }
-
-                    // Проверяем достижения нового пользователя (за баллы и статус)
-                    const newUserAchievements = await achievementsService.checkAndUnlockAchievements(newUserTelegramId, 'points');
-                    if (newUserAchievements.totalUnlocked > 0) {
-                        console.log(`[ReferralService] 🏆 Новый пользователь разблокировал ${newUserAchievements.totalUnlocked} достижений`);
-                    }
-                } catch (achievementError) {
-                    console.warn('[ReferralService] ⚠️ Ошибка проверки достижений:', achievementError.message);
-                }
-
                 // Помечаем бонус как выплаченный
                 await dbRun(
                     'UPDATE referrals SET bonus_paid = TRUE WHERE referral_code = ?',
@@ -204,6 +184,11 @@ async function activateReferralCode(referralCode, newUserTelegramId) {
                     refereeBonus: REFERRAL_BONUSES.REFEREE_BONUS,
                     referrerTelegramId: referral.referrer_telegram_id
                 });
+
+                // TODO: Временно отключено - проблема с вложенными транзакциями в системе достижений
+                // Нужно переработать achievementsService чтобы он не использовал транзакции
+                // или реализовать queue для async операций после основной транзакции
+                console.log('[ReferralService] ℹ️ Проверка достижений временно отключена (проблема с транзакциями)');
 
             } catch (error) {
                 await dbRun('ROLLBACK;');

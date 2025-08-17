@@ -4,7 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { db } = require('../database');
+const { getDbConnection } = require('../database');
 
 class TokenManager {
     constructor(serviceName = 'amocrm') {
@@ -23,7 +23,8 @@ class TokenManager {
     initializeDatabase() {
         try {
             // Создаем таблицу для безопасного хранения токенов
-            db.exec(`
+            const db = getDbConnection();
+            db.run(`
                 CREATE TABLE IF NOT EXISTS tokens (
                     service VARCHAR(50) PRIMARY KEY,
                     access_token TEXT,
@@ -85,23 +86,33 @@ class TokenManager {
      */
     loadFromDatabase() {
         try {
-            const stmt = db.prepare('SELECT * FROM tokens WHERE service = ?');
-            const row = stmt.get(this.serviceName);
-            
-            if (row) {
-                const tokens = {
-                    access_token: row.access_token,
-                    refresh_token: row.refresh_token,
-                    created_at: row.created_at,
-                    expires_in: (row.expires_at - row.created_at)
-                };
-                console.log('[TokenManager] 🗄️ Tokens loaded from database');
-                return this.validateTokens(tokens);
-            }
+            const db = getDbConnection();
+            return new Promise((resolve, reject) => {
+                db.get('SELECT * FROM tokens WHERE service = ?', [this.serviceName], (err, row) => {
+                    if (err) {
+                        console.error('[TokenManager] ❌ Database error:', err);
+                        resolve(null);
+                        return;
+                    }
+                    
+                    if (row) {
+                        const tokens = {
+                            access_token: row.access_token,
+                            refresh_token: row.refresh_token,
+                            created_at: row.created_at,
+                            expires_in: (row.expires_at - row.created_at)
+                        };
+                        console.log('[TokenManager] 🗄️ Tokens loaded from database');
+                        resolve(this.validateTokens(tokens));
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
         } catch (error) {
             console.error('[TokenManager] ❌ Failed to load from database:', error);
+            return Promise.resolve(null);
         }
-        return null;
     }
 
     /**
@@ -127,7 +138,7 @@ class TokenManager {
     /**
      * Умная загрузка с fallback по уровням
      */
-    getTokens() {
+    async getTokens() {
         console.log('[TokenManager] 🔍 Loading tokens with triple protection...');
         
         // Уровень 1: Файл (быстрее всего)
@@ -143,7 +154,7 @@ class TokenManager {
         }
 
         // Уровень 3: База данных (persistent)
-        tokens = this.loadFromDatabase();
+        tokens = await this.loadFromDatabase();
         if (tokens) {
             // Восстанавливаем в файл и environment
             this.saveToFile(tokens);
@@ -225,20 +236,19 @@ class TokenManager {
             const expiresAt = tokens.created_at + tokens.expires_in;
             const now = Math.floor(Date.now() / 1000);
             
-            const stmt = db.prepare(`
+            const db = getDbConnection();
+            db.run(`
                 INSERT OR REPLACE INTO tokens 
                 (service, access_token, refresh_token, expires_at, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-            `);
-            
-            stmt.run(
+            `, [
                 this.serviceName,
                 tokens.access_token,
                 tokens.refresh_token,
                 expiresAt,
                 tokens.created_at,
                 now
-            );
+            ]);
             
             console.log('[TokenManager] 🗄️ Saved to database');
         } catch (error) {
@@ -282,8 +292,8 @@ class TokenManager {
         
         // Удаляем из БД
         try {
-            const stmt = db.prepare('DELETE FROM tokens WHERE service = ?');
-            stmt.run(this.serviceName);
+            const db = getDbConnection();
+            db.run('DELETE FROM tokens WHERE service = ?', [this.serviceName]);
         } catch (error) {
             console.error('[TokenManager] ❌ Failed to clear database:', error);
         }
@@ -294,10 +304,10 @@ class TokenManager {
     /**
      * Здоровье токенов - диагностика
      */
-    getHealthStatus() {
+    async getHealthStatus() {
         const file = this.loadFromFile();
         const env = this.loadFromEnvironment();
-        const db = this.loadFromDatabase();
+        const db = await this.loadFromDatabase();
         
         return {
             file: file ? 'healthy' : 'missing',
