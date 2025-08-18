@@ -105,12 +105,18 @@ app.get('/health', async (req, res) => {
 
         // Проверка AmoCRM токенов
         try {
-            const amocrmClient = require('./amocrm/apiClient');
-            const tokens = amocrmClient.getTokens();
-            if (tokens && tokens.refresh_token) {
-                healthStatus.checks.amocrm_tokens = 'OK';
+            const fs = require('fs');
+            const tokensPath = process.env.TOKENS_PATH + '/tokens.json';
+            if (fs.existsSync(tokensPath)) {
+                const tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf8'));
+                if (tokens && tokens.refresh_token) {
+                    healthStatus.checks.amocrm_tokens = 'OK';
+                } else {
+                    healthStatus.checks.amocrm_tokens = 'WARNING: No refresh token';
+                    if (healthStatus.status === 'OK') healthStatus.status = 'WARNING';
+                }
             } else {
-                healthStatus.checks.amocrm_tokens = 'WARNING: No refresh token';
+                healthStatus.checks.amocrm_tokens = 'WARNING: Tokens file not found';
                 if (healthStatus.status === 'OK') healthStatus.status = 'WARNING';
             }
         } catch (amocrmError) {
