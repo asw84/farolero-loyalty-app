@@ -70,29 +70,56 @@ const testConnection = async (req, res) => {
         const amocrmClient = require('../amocrm/apiClient');
         console.log('[AmoCRM] 🧪 Тестирование подключения...');
         
-        // Получаем авторизованного клиента
-        const client = await amocrmClient.getAuthorizedClient();
-        
-        // Пробуем получить список пользователей
-        const usersResponse = await client.get('/api/v4/users');
-        const usersCount = usersResponse.data._embedded?.users?.length || 0;
-        
-        console.log(`[AmoCRM] ✅ Подключение успешно! Получено ${usersCount} пользователей`);
-        
-        res.status(200).json({
-            success: true,
-            message: 'Подключение к AmoCRM успешно',
-            usersCount: usersCount
+        // Проверяем токены напрямую
+        const tokens = amocrmClient.getTokens();
+        console.log('[AmoCRM] 📋 Текущие токены:', {
+            hasAccessToken: !!tokens.access_token,
+            hasRefreshToken: !!tokens.refresh_token,
+            createdAt: tokens.created_at ? new Date(tokens.created_at * 1000).toISOString() : 'N/A',
+            expiresIn: tokens.expires_in
         });
+        
+        if (!tokens.access_token) {
+            throw new Error('Токен доступа отсутствует. Необходимо пройти авторизацию.');
+        }
+        
+        // Проверяем срок действия токена
+        const currentTime = Math.floor(Date.now() / 1000);
+        const tokenExpirationTime = tokens.created_at + tokens.expires_in;
+        
+        if (currentTime >= tokenExpirationTime) {
+            console.log('[AmoCRM] 🔄 Токен истек, пробуем обновить...');
+            try {
+                await amocrmClient.refreshTokens();
+                console.log('[AmoCRM] ✅ Токен успешно обновлен');
+            } catch (refreshError) {
+                throw new Error('Токен истек и не удалось обновить. Необходимо пройти авторизацию заново.');
+            }
+        }
+        
+        // Пробуем простой API запрос - получаем информацию об аккаунте
+        const authorizedClient = await amocrmClient.getAuthorizedClient();
+        const accountResponse = await authorizedClient.get('/api/v4/account');
+        
+        if (accountResponse.status === 200) {
+            console.log('[AmoCRM] ✅ Подключение успешно, аккаунт доступен');
+            res.status(200).json({
+                success: true,
+                message: 'Подключение к AmoCRM успешно',
+                tokenStatus: 'valid',
+                accountName: accountResponse.data.name || 'Unknown',
+                expiresAt: new Date(tokenExpirationTime * 1000).toISOString()
+            });
+        } else {
+            throw new Error('Не удалось получить информацию об аккаунте');
+        }
     } catch (error) {
         console.error('[AmoCRM] ❌ Ошибка подключения:', error.message);
-        console.error('[AmoCRM] Подробности:', error.response?.data || error);
         
         res.status(500).json({
             success: false,
             message: 'Ошибка подключения к AmoCRM',
-            error: error.message,
-            details: error.response?.data || null
+            error: error.message
         });
     }
 };
@@ -103,11 +130,40 @@ const getContactByTelegramId = async (req, res) => {
         const { telegramId } = req.params;
         
         if (!telegramId) {
-            return res.status(400).json({ message: 'telegramId обязателен' });
+            return res.status(400).json({
+                success: false,
+                message: 'telegramId обязателен'
+            });
         }
         
         const amocrmService = require('../services/amocrm.service');
         console.log(`[AmoCRM] Поиск контакта по Telegram ID: ${telegramId}`);
+        
+        // Проверяем подключение к AmoCRM
+        try {
+            const amocrmClient = require('../amocrm/apiClient');
+            const tokens = amocrmClient.getTokens();
+            
+            if (!tokens.access_token) {
+                throw new Error('Токен доступа отсутствует. Необходимо пройти авторизацию.');
+            }
+            
+            // Проверяем срок действия токена и обновляем при необходимости
+            const currentTime = Math.floor(Date.now() / 1000);
+            const tokenExpirationTime = tokens.created_at + tokens.expires_in;
+            
+            if (currentTime >= tokenExpirationTime) {
+                console.log('[AmoCRM] 🔄 Токен истек, пробуем обновить...');
+                await amocrmClient.refreshTokens();
+            }
+        } catch (tokenError) {
+            console.error('[AmoCRM] ❌ Ошибка проверки токена:', tokenError.message);
+            return res.status(500).json({
+                success: false,
+                message: 'Ошибка аутентификации в AmoCRM',
+                error: tokenError.message
+            });
+        }
         
         const contact = await amocrmService.findContactByTelegramId(telegramId);
         
@@ -146,11 +202,40 @@ const searchContactByTelegramId = async (req, res) => {
         const { telegramId } = req.query;
         
         if (!telegramId) {
-            return res.status(400).json({ message: 'telegramId обязателен' });
+            return res.status(400).json({
+                success: false,
+                message: 'telegramId обязателен'
+            });
         }
         
         const amocrmService = require('../services/amocrm.service');
         console.log(`[AmoCRM] Поиск контакта по Telegram ID (query): ${telegramId}`);
+        
+        // Проверяем подключение к AmoCRM
+        try {
+            const amocrmClient = require('../amocrm/apiClient');
+            const tokens = amocrmClient.getTokens();
+            
+            if (!tokens.access_token) {
+                throw new Error('Токен доступа отсутствует. Необходимо пройти авторизацию.');
+            }
+            
+            // Проверяем срок действия токена и обновляем при необходимости
+            const currentTime = Math.floor(Date.now() / 1000);
+            const tokenExpirationTime = tokens.created_at + tokens.expires_in;
+            
+            if (currentTime >= tokenExpirationTime) {
+                console.log('[AmoCRM] 🔄 Токен истек, пробуем обновить...');
+                await amocrmClient.refreshTokens();
+            }
+        } catch (tokenError) {
+            console.error('[AmoCRM] ❌ Ошибка проверки токена:', tokenError.message);
+            return res.status(500).json({
+                success: false,
+                message: 'Ошибка аутентификации в AmoCRM',
+                error: tokenError.message
+            });
+        }
         
         const contact = await amocrmService.findContactByTelegramId(telegramId);
         

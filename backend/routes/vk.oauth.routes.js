@@ -19,4 +19,7 @@ router.post('/oauth/vk/verify-auth', vkOAuthController.verifyVKIDAuth);
 router.get('/api/vk/oauth/templates/config', vkOAuthController.getTemplatesConfig);
 router.put('/vk/oauth/templates/config', vkOAuthController.updateTemplatesConfig);
 
+// Получение конфигурации VK для frontend
+router.get('/api/vk/config', vkOAuthController.getVKConfig);
+
 module.exports = router;

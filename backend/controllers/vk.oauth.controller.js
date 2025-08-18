@@ -3,6 +3,38 @@ const vkOAuthService = require('../services/vk.oauth.service');
 const htmlTemplateService = require('../services/html.template.service');
 
 /**
+ * Получает конфигурацию VK для frontend
+ * GET /api/vk/config
+ */
+const getVKConfig = async (req, res) => {
+    try {
+        const config = {
+            appId: process.env.VK_CLIENT_ID,
+            redirectUri: process.env.VK_REDIRECT_URI,
+            apiUrl: process.env.APP_BASE_URL || 'https://api.5425685-au70735.twc1.net'
+        };
+        
+        if (!config.appId) {
+            return res.status(500).json({
+                success: false,
+                error: 'VK_CLIENT_ID не настроен'
+            });
+        }
+        
+        res.json({
+            success: true,
+            config: config
+        });
+    } catch (error) {
+        console.error('[VK_ID_CONTROLLER] ❌ Ошибка при получении конфигурации VK:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка при получении конфигурации VK'
+        });
+    }
+};
+
+/**
  * Обрабатывает верификацию данных от VK ID SDK
  * POST /api/oauth/vk/verify-auth
  */
@@ -85,5 +117,6 @@ const updateTemplatesConfig = async (req, res) => {
 module.exports = {
     verifyVKIDAuth,
     getTemplatesConfig,
-    updateTemplatesConfig
+    updateTemplatesConfig,
+    getVKConfig
 };
