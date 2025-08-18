@@ -223,9 +223,6 @@ const ProfilePage = () => {
         )}
       </div>
 
-      <hr/>
-      <h3>Ваша реферальная ссылка:</h3>
-      <p><code>{userData.referralLink}</code></p>
     </div>
   );
 };

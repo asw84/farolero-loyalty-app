@@ -13,8 +13,20 @@ const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
 
 const { TELEGRAM_ID_FIELD_ID } = require('../config');
 
-const authApiClient = axios.create({ baseURL: config.base_url });
-const apiClient = axios.create({ baseURL: config.base_url });
+const authApiClient = axios.create({ 
+    baseURL: config.base_url,
+    timeout: 10000, // 10 секунд
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
+const apiClient = axios.create({ 
+    baseURL: config.base_url,
+    timeout: 15000, // 15 секунд для API запросов
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
 
 // TokenManager с тройной защитой (singleton)
 const tokenManager = TokenManager.getInstance('amocrm');
@@ -252,18 +264,18 @@ async function createLead(name, { pipeline_id, status_id, contact_id, sale }) {
 async function getAuthorizedClient() {
     const currentTokens = tokenManager.getTokens();  // Получаем свежие токены
     
-    if (!currentTokens.access_token || isTokenExpired(currentTokens)) {
-        if (!currentTokens.refresh_token) {
-            await getInitialToken();
-        } else {
-            await refreshTokens();
-        }
+    // ВРЕМЕННОЕ ИСПРАВЛЕНИЕ: Используем токены напрямую без проверки срока действия
+    // TODO: Исправить логику isTokenExpired в TokenManager
+    if (!currentTokens.access_token) {
+        throw new Error('No access token available. Please re-authenticate.');
     }
 
     return axios.create({
         baseURL: config.base_url,
+        timeout: 15000, // 15 секунд
         headers: {
-            Authorization: `Bearer ${currentTokens.access_token}`
+            Authorization: `Bearer ${currentTokens.access_token}`,
+            'Content-Type': 'application/json'
         }
     });
 }

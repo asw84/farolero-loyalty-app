@@ -24,7 +24,7 @@ async function getUserData(telegramId, referrerId = null) {
                 userData = {
                     points: pointsFromAmo,
                     status: status,
-                    referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
+                    referralLink: `https://t.me/farolero_bot?start=ref_${telegramId}`
                 };
                 console.log(`[UserService] ✅ Данные из AmoCRM: ${pointsFromAmo} баллов`);
             } else {
@@ -68,8 +68,7 @@ async function getUserData(telegramId, referrerId = null) {
             
             userData = {
                 points: user.points,
-                status: user.status,
-                referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
+                status: user.status
             };
             console.log(`[UserService] ✅ Синхронизировано и отдано из локальной БД: ${user.points} баллов`);
             
@@ -91,8 +90,7 @@ async function getUserData(telegramId, referrerId = null) {
             
             userData = {
                 points: user.points,
-                status: user.status,
-                referralLink: `${APP_BASE_URL}/?startapp=ref_${telegramId}`
+                status: user.status
             };
             console.log(`[UserService] ✅ Данные из локальной БД: ${user.points} баллов`);
         }
