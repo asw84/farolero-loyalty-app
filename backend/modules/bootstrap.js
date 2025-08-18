@@ -50,9 +50,9 @@ function bootstrapModules() {
     container.registerInstance('database', database.getDbConnection());
     container.registerInstance('logger', new Logger());
 
-    // Регистрируем утилиты
+    // Регистрируем утилиты (singleton)
     container.register('tokenManager', (container) => {
-        return new TokenManager('amocrm');
+        return TokenManager.getInstance('amocrm');
     });
 
     container.register('vkConfigValidator', (container) => {

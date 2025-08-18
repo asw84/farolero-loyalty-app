@@ -16,8 +16,8 @@ const { TELEGRAM_ID_FIELD_ID } = require('../config');
 const authApiClient = axios.create({ baseURL: config.base_url });
 const apiClient = axios.create({ baseURL: config.base_url });
 
-// TokenManager с тройной защитой
-const tokenManager = new TokenManager('amocrm');
+// TokenManager с тройной защитой (singleton)
+const tokenManager = TokenManager.getInstance('amocrm');
 let tokens = tokenManager.getTokens();
 
 // Устаревшие функции заменены на TokenManager
@@ -37,23 +37,24 @@ function isTokenExpired(tokens) {
 async function refreshTokens() {
     try {
         console.log('[AMO] 🔄 Tokens refreshing...');
+        const currentTokens = await tokenManager.getTokens();
         const response = await authApiClient.post('/oauth2/access_token', {
             client_id: config.client_id,
             client_secret: config.client_secret,
             grant_type: 'refresh_token',
-            refresh_token: tokens.refresh_token,
+            refresh_token: currentTokens.refresh_token,
             redirect_uri: config.redirect_uri
         });
 
-        tokens = {
+        const newTokens = {
             access_token: response.data.access_token,
             refresh_token: response.data.refresh_token,
             expires_in: response.data.expires_in,
             created_at: Math.floor(Date.now() / 1000)
         };
-        await tokenManager.saveTokens(tokens);
+        await tokenManager.saveTokens(newTokens);
         console.log('[AMO] ✅ Tokens refreshed successfully');
-        return tokens.access_token;
+        return newTokens.access_token;
     } catch (err) {
         console.error('[AMO] ❌ Failed to refresh tokens', err.response?.data || err.message);
         throw err;
@@ -64,14 +65,16 @@ async function getInitialToken() {
     try {
         console.log('[AMO] 🔑 Attempting to get initial token...');
         
+        const currentTokens = tokenManager.getTokens();
+        
         // Проверяем, есть ли у нас валидные токены
-        if (tokens.access_token && !isTokenExpired(tokens)) {
+        if (currentTokens.access_token && !isTokenExpired(currentTokens)) {
             console.log('[AMO] ✅ Using existing valid token');
-            return tokens.access_token;
+            return currentTokens.access_token;
         }
         
         // Если есть refresh_token, пробуем обновить токен
-        if (tokens.refresh_token) {
+        if (currentTokens.refresh_token) {
             try {
                 console.log('[AMO] 🔄 Trying to refresh token...');
                 return await refreshTokens();
@@ -91,15 +94,15 @@ async function getInitialToken() {
             grant_type: 'authorization_code', code: config.auth_code,
             redirect_uri: config.redirect_uri
         });
-        tokens = {
+        const newTokens = {
             access_token: response.data.access_token,
             refresh_token: response.data.refresh_token,
             expires_in: response.data.expires_in,
             created_at: Math.floor(Date.now() / 1000)
         };
-        await tokenManager.saveTokens(tokens);
+        await tokenManager.saveTokens(newTokens);
         console.log('[AMO] ✅ Initial token successfully retrieved.');
-        return tokens.access_token;
+        return newTokens.access_token;
     } catch (error) {
         console.error('❌ [AMO] Error getting initial token:', error.response?.data || error.message);
         throw error;
@@ -122,15 +125,15 @@ async function exchangeCodeForTokens(code) {
             redirect_uri: config.redirect_uri
         });
 
-        tokens = {
+        const newTokens = {
             access_token: response.data.access_token,
             refresh_token: response.data.refresh_token,
             expires_in: response.data.expires_in,
             created_at: Math.floor(Date.now() / 1000)
         };
-        await tokenManager.saveTokens(tokens);
+        await tokenManager.saveTokens(newTokens);
         console.log('[AMO] ✅ Tokens successfully obtained and saved');
-        return tokens;
+        return newTokens;
     } catch (error) {
         console.error('❌ [AMO] Error exchanging code for tokens:', error.response?.data || error.message);
         throw error;
@@ -140,7 +143,9 @@ async function exchangeCodeForTokens(code) {
 apiClient.interceptors.request.use(async (axiosConfig) => {
     console.log(`[AMO] 🔑 Making request to: ${axiosConfig.url}`);
     
-    if (!tokens.access_token) {
+    const currentTokens = tokenManager.getTokens();
+    
+    if (!currentTokens.access_token) {
         console.log('[AMO] ⚠️ No access token found, getting initial token...');
         try {
             await getInitialToken();
@@ -150,11 +155,11 @@ apiClient.interceptors.request.use(async (axiosConfig) => {
         }
     }
     
-    const tokenExpirationTime = tokens.created_at + tokens.expires_in;
+    const tokenExpirationTime = currentTokens.created_at + currentTokens.expires_in;
     const currentTime = Math.floor(Date.now() / 1000);
     console.log(`[AMO] 📅 Token expires at: ${new Date(tokenExpirationTime * 1000).toISOString()}, current time: ${new Date(currentTime * 1000).toISOString()}`);
     
-    if (isTokenExpired(tokens)) {
+    if (isTokenExpired(currentTokens)) {
         console.log('[AMO] 🔄 Token expired, refreshing...');
         try {
             const newAccessToken = await refreshTokens();
@@ -165,7 +170,7 @@ apiClient.interceptors.request.use(async (axiosConfig) => {
             return Promise.reject(new Error('Failed to refresh token.'));
         }
     } else {
-        axiosConfig.headers['Authorization'] = `Bearer ${tokens.access_token}`;
+        axiosConfig.headers['Authorization'] = `Bearer ${currentTokens.access_token}`;
         console.log('[AMO] ✅ Using existing valid token');
     }
     return axiosConfig;
@@ -245,8 +250,10 @@ async function createLead(name, { pipeline_id, status_id, contact_id, sale }) {
 }
 
 async function getAuthorizedClient() {
-    if (!tokens.access_token || isTokenExpired(tokens)) {
-        if (!tokens.refresh_token) {
+    const currentTokens = tokenManager.getTokens();  // Получаем свежие токены
+    
+    if (!currentTokens.access_token || isTokenExpired(currentTokens)) {
+        if (!currentTokens.refresh_token) {
             await getInitialToken();
         } else {
             await refreshTokens();
@@ -256,7 +263,7 @@ async function getAuthorizedClient() {
     return axios.create({
         baseURL: config.base_url,
         headers: {
-            Authorization: `Bearer ${tokens.access_token}`
+            Authorization: `Bearer ${currentTokens.access_token}`
         }
     });
 }

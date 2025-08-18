@@ -17,6 +17,13 @@ class TokenManager {
         this.initializeDatabase();
     }
 
+    static getInstance(serviceName = 'amocrm') {
+        if (!TokenManager.instance) {
+            TokenManager.instance = new TokenManager(serviceName);
+        }
+        return TokenManager.instance;
+    }
+
     /**
      * Инициализация таблицы токенов в БД
      */
