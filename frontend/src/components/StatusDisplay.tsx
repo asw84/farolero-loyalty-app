@@ -14,10 +14,10 @@ interface StatusLevel {
 interface StatusDisplayProps {
   points: number;
   status: string;
-  telegramId: string;
+  telegramId?: string | number | null;
 }
 
-const StatusDisplay: React.FC<StatusDisplayProps> = ({ points, status, telegramId }) => {
+const StatusDisplay: React.FC<StatusDisplayProps> = ({ points, status }) => {
   const [statusLevels, setStatusLevels] = useState<StatusLevel[]>([]);
   const [loading, setLoading] = useState(true);
 
