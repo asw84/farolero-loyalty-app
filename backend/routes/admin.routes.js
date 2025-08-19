@@ -31,6 +31,10 @@ router.get('/admin/top-users', isAuthenticated, adminController.getTopUsers);
 router.get('/admin/users', isAuthenticated, adminController.searchUsers);
 router.get('/admin/users/:id', isAuthenticated, adminController.getUserDetails);
 router.get('/admin/stats', isAuthenticated, adminController.getStats);
+router.get('/admin/registration-stats', isAuthenticated, adminController.getUserRegistrationStats);
+router.get('/admin/points-distribution', isAuthenticated, adminController.getPointsDistribution);
+router.get('/admin/activity-stats', isAuthenticated, adminController.getActivityStats);
+router.get('/admin/daily-activity', isAuthenticated, adminController.getDailyActivityStats);
 router.post('/admin/adjust-points', isAuthenticated, adminController.adjustPoints);
 
 module.exports = router;

@@ -186,11 +186,11 @@ app.use('/api/oauth/vk', vkOAuthRoutes);
 console.log('Registering VK config routes...');
 app.use('/api/vk/config', vkConfigRoutes);
 console.log('Registering VK config only routes...');
-app.use('/api/vk/config', vkConfigOnlyRoutes);
+app.use('/api/vk', vkConfigOnlyRoutes);
 console.log('Registering VK test routes...');
-app.use('/api/vk', vkTestRoutes);
+app.use('/api/vk/test', vkTestRoutes);
 console.log('Registering VK routes...');
-app.use('/api', vkRoutes);
+app.use('/api/webhooks', vkRoutes);
 
 // Добавляем прямой маршрут для VK Callback API без префикса /api
 // Это необходимо для подтверждения адреса сервера VK

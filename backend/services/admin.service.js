@@ -133,10 +133,111 @@ async function adjustPoints(telegramId, points, reason) {
     }
 }
 
+/**
+ * Gets user registration statistics by day for the last 30 days.
+ * @returns {Promise<Array>} Array of daily registration counts.
+ */
+function getUserRegistrationStats() {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT
+                DATE(created_at) as date,
+                COUNT(*) as count
+            FROM users
+            WHERE created_at >= datetime('now', '-30 days')
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        `;
+        db.all(query, [], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
+/**
+ * Gets points distribution statistics.
+ * @returns {Promise<Array>} Array of points distribution data.
+ */
+function getPointsDistribution() {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT
+                CASE
+                    WHEN points < 1000 THEN '0-1000'
+                    WHEN points BETWEEN 1000 AND 5000 THEN '1000-5000'
+                    WHEN points BETWEEN 5000 AND 10000 THEN '5000-10000'
+                    WHEN points BETWEEN 10000 AND 20000 THEN '10000-20000'
+                    ELSE '20000+'
+                END as range,
+                COUNT(*) as count
+            FROM users
+            GROUP BY range
+            ORDER BY range
+        `;
+        db.all(query, [], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
+/**
+ * Gets activity statistics by type for the last 30 days.
+ * @returns {Promise<Array>} Array of activity statistics.
+ */
+function getActivityStats() {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT
+                activity_type,
+                COUNT(*) as count,
+                SUM(CASE WHEN points_awarded > 0 THEN points_awarded ELSE 0 END) as total_points_earned,
+                SUM(CASE WHEN points_awarded < 0 THEN ABS(points_awarded) ELSE 0 END) as total_points_spent
+            FROM activity
+            WHERE created_at >= datetime('now', '-30 days')
+            GROUP BY activity_type
+            ORDER BY count DESC
+        `;
+        db.all(query, [], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
+/**
+ * Gets daily activity statistics for the last 7 days.
+ * @returns {Promise<Array>} Array of daily activity data.
+ */
+function getDailyActivityStats() {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT
+                DATE(created_at) as date,
+                COUNT(*) as activity_count,
+                SUM(CASE WHEN points_awarded > 0 THEN points_awarded ELSE 0 END) as points_earned,
+                SUM(CASE WHEN points_awarded < 0 THEN ABS(points_awarded) ELSE 0 END) as points_spent
+            FROM activity
+            WHERE created_at >= datetime('now', '-7 days')
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        `;
+        db.all(query, [], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
 module.exports = {
     getTopUsers,
     getUserDetails,
     searchUsers,
     getStats,
     adjustPoints,
+    getUserRegistrationStats,
+    getPointsDistribution,
+    getActivityStats,
+    getDailyActivityStats,
 };

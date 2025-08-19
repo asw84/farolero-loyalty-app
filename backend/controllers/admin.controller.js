@@ -63,10 +63,54 @@ async function adjustPoints(req, res) {
     }
 }
 
+async function getUserRegistrationStats(req, res) {
+    try {
+        const stats = await adminService.getUserRegistrationStats();
+        res.json(stats);
+    } catch (error) {
+        console.error('❌ [AdminController] Error getting user registration stats:', error);
+        res.status(500).json({ message: error.message || 'Internal server error.' });
+    }
+}
+
+async function getPointsDistribution(req, res) {
+    try {
+        const distribution = await adminService.getPointsDistribution();
+        res.json(distribution);
+    } catch (error) {
+        console.error('❌ [AdminController] Error getting points distribution:', error);
+        res.status(500).json({ message: error.message || 'Internal server error.' });
+    }
+}
+
+async function getActivityStats(req, res) {
+    try {
+        const stats = await adminService.getActivityStats();
+        res.json(stats);
+    } catch (error) {
+        console.error('❌ [AdminController] Error getting activity stats:', error);
+        res.status(500).json({ message: error.message || 'Internal server error.' });
+    }
+}
+
+async function getDailyActivityStats(req, res) {
+    try {
+        const stats = await adminService.getDailyActivityStats();
+        res.json(stats);
+    } catch (error) {
+        console.error('❌ [AdminController] Error getting daily activity stats:', error);
+        res.status(500).json({ message: error.message || 'Internal server error.' });
+    }
+}
+
 module.exports = {
     getTopUsers,
     getUserDetails,
     searchUsers,
     getStats,
     adjustPoints,
+    getUserRegistrationStats,
+    getPointsDistribution,
+    getActivityStats,
+    getDailyActivityStats,
 };

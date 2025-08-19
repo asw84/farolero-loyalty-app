@@ -107,6 +107,62 @@ export const adjustUserPoints = async (telegramId: string, points: number, reaso
   }
 };
 
+// Функция для получения статистики регистраций пользователей
+export const fetchUserRegistrationStats = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admin/registration-stats`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user registration stats:', error);
+    return [];
+  }
+};
+
+// Функция для получения распределения баллов
+export const fetchPointsDistribution = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admin/points-distribution`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch points distribution:', error);
+    return [];
+  }
+};
+
+// Функция для получения статистики активности
+export const fetchActivityStats = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admin/activity-stats`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch activity stats:', error);
+    return [];
+  }
+};
+
+// Функция для получения ежедневной статистики активности
+export const fetchDailyActivityStats = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admin/daily-activity`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch daily activity stats:', error);
+    return [];
+  }
+};
+
 // Функция для проверки подписки на соцсети
 export const checkSocialSubscription = async (telegramId: number | string, socialNetwork: string) => {
   try {

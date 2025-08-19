@@ -10,6 +10,7 @@ router.get('/callback', amocrmController.callback);
 router.get('/test', amocrmController.testConnection);
 router.get('/contact/:telegramId', amocrmController.getContactByTelegramId);
 router.get('/contacts/search', amocrmController.searchContactByTelegramId);
+router.get('/field/telegram', amocrmController.getTelegramFieldId);
 
 // Экспортируем роутер
 module.exports = router;
