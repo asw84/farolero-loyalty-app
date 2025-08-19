@@ -39,6 +39,31 @@ async function handleNewWallReply(eventObject) {
 }
 
 /**
+ * Обрабатывает событие нового лайка из VK.
+ * @param {object} eventObject - Объект события от VK Callback API.
+ */
+async function handleLikeAdd(eventObject) {
+    const { liker_id, object_type, object_id } = eventObject;
+    console.log(`[VK_SERVICE] Новый лайк от пользователя ${liker_id} на ${object_type} ${object_id}`);
+
+    try {
+        // 1. Находим или создаем пользователя по его VK ID
+        const user = await findOrCreateUser(String(liker_id), 'vk_user_id');
+
+        // 2. Начисляем баллы и записываем активность
+        await addPoints(user.id, 5, 'vk', 'like'); // 5 баллов за лайк
+
+        console.log(`[VK_SERVICE] ✅ Успешно начислено 5 баллов пользователю с VK ID ${liker_id}`);
+
+        return { success: true };
+    } catch (error) {
+        console.error('❌ [VK_SERVICE] Ошибка при обработке лайка из VK:', error);
+        // В реальном приложении здесь можно добавить более детальную обработку ошибок
+        return { success: false };
+    }
+}
+
+/**
  * Проверяет, является ли пользователь членом VK группы
  * @param {string|number} userId - ID пользователя VK
  * @returns {Promise<boolean>} - true если пользователь подписан
@@ -370,6 +395,7 @@ async function checkIfInFavorites(userId, ownerId, postId, token) {
 
 module.exports = {
     handleNewWallReply,
+    handleLikeAdd,
     isMember,
     hasLikedPost,
     hasCommentedPost,

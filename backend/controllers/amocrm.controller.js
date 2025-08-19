@@ -1,6 +1,7 @@
 // backend/controllers/amocrm.controller.js
 const amocrmService = require('../services/amocrm.service');
 const amocrmClient = require('../amocrm/apiClient');
+const TokenManager = require('../utils/token-manager');
 
 const init = async (req, res) => {
     try {
@@ -68,10 +69,11 @@ const callback = async (req, res) => {
 const testConnection = async (req, res) => {
     try {
         const amocrmClient = require('../amocrm/apiClient');
+        const tokenManager = TokenManager.getInstance('amocrm');
         console.log('[AmoCRM] 🧪 Тестирование подключения...');
         
-        // Проверяем токены напрямую
-        const tokens = amocrmClient.getTokens();
+        // Проверяем токены через TokenManager
+        const tokens = await tokenManager.getTokens();
         console.log('[AmoCRM] 📋 Текущие токены:', {
             hasAccessToken: !!tokens.access_token,
             hasRefreshToken: !!tokens.refresh_token,

@@ -29,6 +29,14 @@ async function handleVkCallback(req, res) {
             res.status(200).send('ok');
             break;
 
+        // Событие нового лайка
+        case 'like_add':
+            console.log('[VK_CONTROLLER] Получено событие нового лайка.');
+            await vkService.handleLikeAdd(object);
+            // Отвечаем 'ok', чтобы VK понял, что событие принято
+            res.status(200).send('ok');
+            break;
+
         // Можно добавить обработку других событий (вступление в группу, лайки и т.д.)
         // case 'group_join':
         //     ...

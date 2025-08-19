@@ -54,15 +54,24 @@ class TokenManager {
         try {
             if (fs.existsSync(this.TOKENS_PATH)) {
                 const content = fs.readFileSync(this.TOKENS_PATH, 'utf-8');
+                console.log('[TokenManager] 📄 File content length:', content.length);
                 if (content) {
                     const tokens = JSON.parse(content);
-                    console.log('[TokenManager] 📁 Tokens loaded from file');
-                    return this.validateTokens(tokens);
+                    console.log('[TokenManager] 📋 Parsed tokens:', {
+                        hasAccessToken: !!tokens.access_token,
+                        hasRefreshToken: !!tokens.refresh_token,
+                        created_at: tokens.created_at,
+                        expires_in: tokens.expires_in
+                    });
+                    const validatedTokens = this.validateTokens(tokens);
+                    console.log('[TokenManager] ✅ Validation result:', validatedTokens ? 'Valid' : 'Invalid');
+                    return validatedTokens;
                 }
             }
         } catch (error) {
             console.error('[TokenManager] ❌ Failed to load from file:', error);
         }
+        console.log('[TokenManager] ❌ File not found or empty');
         return null;
     }
 
@@ -126,7 +135,17 @@ class TokenManager {
      * Валидация токенов
      */
     validateTokens(tokens) {
+        console.log('[TokenManager] 🔍 Validating tokens...');
+        console.log('[TokenManager] 📋 Input tokens:', {
+            hasTokens: !!tokens,
+            hasAccessToken: !!tokens?.access_token,
+            hasRefreshToken: !!tokens?.refresh_token,
+            created_at: tokens?.created_at,
+            expires_in: tokens?.expires_in
+        });
+        
         if (!tokens || !tokens.refresh_token) {
+            console.log('[TokenManager] ❌ Validation failed: No tokens or refresh_token');
             return null;
         }
 
@@ -134,11 +153,20 @@ class TokenManager {
         const maxAge = 90 * 24 * 60 * 60; // 90 дней в секундах
         const age = Math.floor(Date.now() / 1000) - tokens.created_at;
         
+        console.log('[TokenManager] ⏱️ Token age check:', {
+            age: age,
+            maxAge: maxAge,
+            created_at: tokens.created_at,
+            now: Math.floor(Date.now() / 1000),
+            isTooOld: age > maxAge
+        });
+        
         if (age > maxAge) {
             console.log('[TokenManager] ⚠️ Tokens too old, need re-authorization');
             return null;
         }
 
+        console.log('[TokenManager] ✅ Tokens validation passed');
         return tokens;
     }
 

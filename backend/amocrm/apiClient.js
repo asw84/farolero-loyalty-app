@@ -30,7 +30,6 @@ const apiClient = axios.create({
 
 // TokenManager с тройной защитой (singleton)
 const tokenManager = TokenManager.getInstance('amocrm');
-let tokens = tokenManager.getTokens();
 
 // Устаревшие функции заменены на TokenManager
 // Оставляем для обратной совместимости
@@ -262,10 +261,14 @@ async function createLead(name, { pipeline_id, status_id, contact_id, sale }) {
 }
 
 async function getAuthorizedClient() {
-    const currentTokens = tokenManager.getTokens();  // Получаем свежие токены
+    const currentTokens = await tokenManager.getTokens();  // Получаем свежие токены
     
-    // ВРЕМЕННОЕ ИСПРАВЛЕНИЕ: Используем токены напрямую без проверки срока действия
-    // TODO: Исправить логику isTokenExpired в TokenManager
+    console.log('[AMO] 🔑 getAuthorizedClient tokens:', {
+        hasAccessToken: !!currentTokens.access_token,
+        hasRefreshToken: !!currentTokens.refresh_token,
+        created_at: currentTokens.created_at
+    });
+    
     if (!currentTokens.access_token) {
         throw new Error('No access token available. Please re-authenticate.');
     }
