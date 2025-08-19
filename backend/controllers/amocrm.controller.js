@@ -179,23 +179,38 @@ const getContactByTelegramId = async (req, res) => {
             // Ищем контакты по значению кастомного поля
             const contact = await authorizedClient.get('/api/v4/contacts', {
                 params: {
-                    [`filter[custom_fields][${telegramFieldId}][]`]: String(telegramId)
+                    query: String(telegramId)
                 }
             });
             
             if (contact.data && contact.data._embedded && contact.data._embedded.contacts.length > 0) {
-                const foundContact = contact.data._embedded.contacts[0];
-                const points = amocrmService.extractPointsFromContact(foundContact);
-                console.log(`[AmoCRM] ✅ Найден контакт: ${foundContact.name} (ID: ${foundContact.id}), баллов: ${points}`);
+                // Ищем контакт, у которого в имени или в кастомных полях есть нужный Telegram ID
+                const foundContact = contact.data._embedded.contacts.find(c =>
+                    String(c.name).trim() === String(telegramId) ||
+                    c.custom_fields_values?.some(field =>
+                        field.field_id === telegramFieldId && String(field.values[0]?.value).trim() === String(telegramId)
+                    )
+                );
                 
-                res.status(200).json({
-                    success: true,
-                    contact: {
-                        id: foundContact.id,
-                        name: foundContact.name,
-                        points: points
-                    }
-                });
+                if (foundContact) {
+                    const points = amocrmService.extractPointsFromContact(foundContact);
+                    console.log(`[AmoCRM] ✅ Найден контакт: ${foundContact.name} (ID: ${foundContact.id}), баллов: ${points}`);
+                    
+                    res.status(200).json({
+                        success: true,
+                        contact: {
+                            id: foundContact.id,
+                            name: foundContact.name,
+                            points: points
+                        }
+                    });
+                } else {
+                    console.log(`[AmoCRM] ⚠️ Контакт с Telegram ID ${telegramId} не найден среди результатов поиска`);
+                    res.status(404).json({
+                        success: false,
+                        message: 'Контакт не найден'
+                    });
+                }
             } else {
                 console.log(`[AmoCRM] ⚠️ Контакт с Telegram ID ${telegramId} не найден`);
                 res.status(404).json({
@@ -264,23 +279,38 @@ const searchContactByTelegramId = async (req, res) => {
         // Ищем контакты по значению кастомного поля
         const contact = await authorizedClient.get('/api/v4/contacts', {
             params: {
-                [`filter[custom_fields][${telegramFieldId}][]`]: String(telegramId)
+                query: String(telegramId)
             }
         });
         
         if (contact.data && contact.data._embedded && contact.data._embedded.contacts.length > 0) {
-            const foundContact = contact.data._embedded.contacts[0];
-            const points = amocrmService.extractPointsFromContact(foundContact);
-            console.log(`[AmoCRM] ✅ Найден контакт: ${foundContact.name} (ID: ${foundContact.id}), баллов: ${points}`);
+            // Ищем контакт, у которого в имени или в кастомных полях есть нужный Telegram ID
+            const foundContact = contact.data._embedded.contacts.find(c =>
+                String(c.name).trim() === String(telegramId) ||
+                c.custom_fields_values?.some(field =>
+                    field.field_id === telegramFieldId && String(field.values[0]?.value).trim() === String(telegramId)
+                )
+            );
             
-            res.status(200).json({
-                success: true,
-                contact: {
-                    id: foundContact.id,
-                    name: foundContact.name,
-                    points: points
-                }
-            });
+            if (foundContact) {
+                const points = amocrmService.extractPointsFromContact(foundContact);
+                console.log(`[AmoCRM] ✅ Найден контакт: ${foundContact.name} (ID: ${foundContact.id}), баллов: ${points}`);
+                
+                res.status(200).json({
+                    success: true,
+                    contact: {
+                        id: foundContact.id,
+                        name: foundContact.name,
+                        points: points
+                    }
+                });
+            } else {
+                console.log(`[AmoCRM] ⚠️ Контакт с Telegram ID ${telegramId} не найден среди результатов поиска`);
+                res.status(404).json({
+                    success: false,
+                    message: 'Контакт не найден'
+                });
+            }
         } else {
             console.log(`[AmoCRM] ⚠️ Контакт с Telegram ID ${telegramId} не найден`);
             res.status(404).json({
