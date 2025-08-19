@@ -1,6 +1,6 @@
 // frontend/src/components/admin/UserSearch.tsx
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react'; // useEffect удален, так как не используется
 
 interface User {
   id: number;

@@ -58,7 +58,7 @@ const PointsDistributionChart = () => {
               dataKey="count"
               nameKey="range"
             >
-              {data.map((entry, index) => (
+              {data.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>

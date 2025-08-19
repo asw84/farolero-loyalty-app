@@ -1,6 +1,6 @@
 // frontend/src/components/admin/AdminTabs.tsx
 
-import { useState } from 'react';
+// import { useState } from 'react'; // Не используется, удален для исправления ошибки TS6133
 
 interface AdminTabsProps {
   activeTab: string;
