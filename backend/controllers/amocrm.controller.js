@@ -103,13 +103,22 @@ const testConnection = async (req, res) => {
         const authorizedClient = await amocrmClient.getAuthorizedClient();
         const accountResponse = await authorizedClient.get('/api/v4/account');
         
+        // Также получаем количество контактов для отображения
+        const contactsResponse = await authorizedClient.get('/api/v4/contacts', {
+            params: { limit: 1 }
+        });
+        
         if (accountResponse.status === 200) {
+            const contactsCount = contactsResponse.data?._embedded?.contacts?.length || 0;
+            const totalContactsCount = contactsResponse.data?._total_elements || 0;
+            
             console.log('[AmoCRM] ✅ Подключение успешно, аккаунт доступен');
             res.status(200).json({
                 success: true,
                 message: 'Подключение к AmoCRM успешно',
                 tokenStatus: 'valid',
                 accountName: accountResponse.data.name || 'Unknown',
+                usersCount: totalContactsCount,
                 expiresAt: new Date(tokenExpirationTime * 1000).toISOString()
             });
         } else {
@@ -141,51 +150,65 @@ const getContactByTelegramId = async (req, res) => {
         const amocrmService = require('../services/amocrm.service');
         console.log(`[AmoCRM] Поиск контакта по Telegram ID: ${telegramId}`);
         
-        // Проверяем подключение к AmoCRM
+        // Используем правильный подход с кастомными полями
         try {
             const amocrmClient = require('../amocrm/apiClient');
-            const tokens = amocrmClient.getTokens();
+            const authorizedClient = await amocrmClient.getAuthorizedClient();
             
-            if (!tokens.access_token) {
-                throw new Error('Токен доступа отсутствует. Необходимо пройти авторизацию.');
+            // Сначала получаем ID поля для Telegram ID
+            const fieldsResponse = await authorizedClient.get('/api/v4/contacts/custom_fields');
+            let telegramFieldId = null;
+            
+            if (fieldsResponse.data && fieldsResponse.data._embedded && fieldsResponse.data._embedded.custom_fields) {
+                const telegramField = fieldsResponse.data._embedded.custom_fields.find(field =>
+                    field.name.toLowerCase().includes('telegram') ||
+                    field.name.toLowerCase().includes('tg') ||
+                    field.code === 'TELEGRAM_ID'
+                );
+                
+                if (telegramField) {
+                    telegramFieldId = telegramField.id;
+                    console.log(`[AmoCRM] ✅ Найдено поле Telegram: ${telegramField.name} (ID: ${telegramField.id})`);
+                }
             }
             
-            // Проверяем срок действия токена и обновляем при необходимости
-            const currentTime = Math.floor(Date.now() / 1000);
-            const tokenExpirationTime = tokens.created_at + tokens.expires_in;
-            
-            if (currentTime >= tokenExpirationTime) {
-                console.log('[AmoCRM] 🔄 Токен истек, пробуем обновить...');
-                await amocrmClient.refreshTokens();
+            if (!telegramFieldId) {
+                throw new Error('Поле для Telegram ID не найдено в настройках AmoCRM');
             }
-        } catch (tokenError) {
-            console.error('[AmoCRM] ❌ Ошибка проверки токена:', tokenError.message);
-            return res.status(500).json({
-                success: false,
-                message: 'Ошибка аутентификации в AmoCRM',
-                error: tokenError.message
-            });
-        }
-        
-        const contact = await amocrmService.findContactByTelegramId(telegramId);
-        
-        if (contact) {
-            const points = amocrmService.extractPointsFromContact(contact);
-            console.log(`[AmoCRM] ✅ Найден контакт: ${contact.name} (ID: ${contact.id}), баллов: ${points}`);
             
-            res.status(200).json({
-                success: true,
-                contact: {
-                    id: contact.id,
-                    name: contact.name,
-                    points: points
+            // Ищем контакты по значению кастомного поля
+            const contact = await authorizedClient.get('/api/v4/contacts', {
+                params: {
+                    [`filter[custom_fields][${telegramFieldId}][]`]: String(telegramId)
                 }
             });
-        } else {
-            console.log(`[AmoCRM] ⚠️ Контакт с Telegram ID ${telegramId} не найден`);
-            res.status(404).json({
+            
+            if (contact.data && contact.data._embedded && contact.data._embedded.contacts.length > 0) {
+                const foundContact = contact.data._embedded.contacts[0];
+                const points = amocrmService.extractPointsFromContact(foundContact);
+                console.log(`[AmoCRM] ✅ Найден контакт: ${foundContact.name} (ID: ${foundContact.id}), баллов: ${points}`);
+                
+                res.status(200).json({
+                    success: true,
+                    contact: {
+                        id: foundContact.id,
+                        name: foundContact.name,
+                        points: points
+                    }
+                });
+            } else {
+                console.log(`[AmoCRM] ⚠️ Контакт с Telegram ID ${telegramId} не найден`);
+                res.status(404).json({
+                    success: false,
+                    message: 'Контакт не найден'
+                });
+            }
+        } catch (error) {
+            console.error('[AmoCRM] ❌ Ошибка при поиске контакта:', error.message);
+            res.status(500).json({
                 success: false,
-                message: 'Контакт не найден'
+                message: 'Ошибка при поиске контакта',
+                error: error.message
             });
         }
     } catch (error) {
@@ -213,43 +236,48 @@ const searchContactByTelegramId = async (req, res) => {
         const amocrmService = require('../services/amocrm.service');
         console.log(`[AmoCRM] Поиск контакта по Telegram ID (query): ${telegramId}`);
         
-        // Проверяем подключение к AmoCRM
-        try {
-            const amocrmClient = require('../amocrm/apiClient');
-            const tokens = amocrmClient.getTokens();
+        // Используем правильный подход с кастомными полями
+        const amocrmClient = require('../amocrm/apiClient');
+        const authorizedClient = await amocrmClient.getAuthorizedClient();
+        
+        // Сначала получаем ID поля для Telegram ID
+        const fieldsResponse = await authorizedClient.get('/api/v4/contacts/custom_fields');
+        let telegramFieldId = null;
+        
+        if (fieldsResponse.data && fieldsResponse.data._embedded && fieldsResponse.data._embedded.custom_fields) {
+            const telegramField = fieldsResponse.data._embedded.custom_fields.find(field =>
+                field.name.toLowerCase().includes('telegram') ||
+                field.name.toLowerCase().includes('tg') ||
+                field.code === 'TELEGRAM_ID'
+            );
             
-            if (!tokens.access_token) {
-                throw new Error('Токен доступа отсутствует. Необходимо пройти авторизацию.');
+            if (telegramField) {
+                telegramFieldId = telegramField.id;
+                console.log(`[AmoCRM] ✅ Найдено поле Telegram: ${telegramField.name} (ID: ${telegramField.id})`);
             }
-            
-            // Проверяем срок действия токена и обновляем при необходимости
-            const currentTime = Math.floor(Date.now() / 1000);
-            const tokenExpirationTime = tokens.created_at + tokens.expires_in;
-            
-            if (currentTime >= tokenExpirationTime) {
-                console.log('[AmoCRM] 🔄 Токен истек, пробуем обновить...');
-                await amocrmClient.refreshTokens();
-            }
-        } catch (tokenError) {
-            console.error('[AmoCRM] ❌ Ошибка проверки токена:', tokenError.message);
-            return res.status(500).json({
-                success: false,
-                message: 'Ошибка аутентификации в AmoCRM',
-                error: tokenError.message
-            });
         }
         
-        const contact = await amocrmService.findContactByTelegramId(telegramId);
+        if (!telegramFieldId) {
+            throw new Error('Поле для Telegram ID не найдено в настройках AmoCRM');
+        }
         
-        if (contact) {
-            const points = amocrmService.extractPointsFromContact(contact);
-            console.log(`[AmoCRM] ✅ Найден контакт: ${contact.name} (ID: ${contact.id}), баллов: ${points}`);
+        // Ищем контакты по значению кастомного поля
+        const contact = await authorizedClient.get('/api/v4/contacts', {
+            params: {
+                [`filter[custom_fields][${telegramFieldId}][]`]: String(telegramId)
+            }
+        });
+        
+        if (contact.data && contact.data._embedded && contact.data._embedded.contacts.length > 0) {
+            const foundContact = contact.data._embedded.contacts[0];
+            const points = amocrmService.extractPointsFromContact(foundContact);
+            console.log(`[AmoCRM] ✅ Найден контакт: ${foundContact.name} (ID: ${foundContact.id}), баллов: ${points}`);
             
             res.status(200).json({
                 success: true,
                 contact: {
-                    id: contact.id,
-                    name: contact.name,
+                    id: foundContact.id,
+                    name: foundContact.name,
                     points: points
                 }
             });
@@ -270,6 +298,51 @@ const searchContactByTelegramId = async (req, res) => {
     }
 };
 
+// Получение ID кастомного поля для Telegram ID
+const getTelegramFieldId = async (req, res) => {
+    try {
+        const amocrmClient = require('../amocrm/apiClient');
+        const authorizedClient = await amocrmClient.getAuthorizedClient();
+        
+        // Получаем все кастомные поля контактов
+        const response = await authorizedClient.get('/api/v4/contacts/custom_fields');
+        
+        if (response.data && response.data._embedded && response.data._embedded.custom_fields) {
+            // Ищем поле с названием, связанным с Telegram
+            const telegramField = response.data._embedded.custom_fields.find(field =>
+                field.name.toLowerCase().includes('telegram') ||
+                field.name.toLowerCase().includes('tg') ||
+                field.code === 'TELEGRAM_ID'
+            );
+            
+            if (telegramField) {
+                console.log(`[AmoCRM] ✅ Найдено поле Telegram: ${telegramField.name} (ID: ${telegramField.id})`);
+                res.status(200).json({
+                    success: true,
+                    fieldId: telegramField.id,
+                    fieldName: telegramField.name,
+                    fieldType: telegramField.type
+                });
+            } else {
+                console.log('[AmoCRM] ⚠️ Поле для Telegram ID не найдено');
+                res.status(404).json({
+                    success: false,
+                    message: 'Поле для Telegram ID не найдено'
+                });
+            }
+        } else {
+            throw new Error('Не удалось получить список кастомных полей');
+        }
+    } catch (error) {
+        console.error('[AmoCRM] ❌ Ошибка при получении ID поля Telegram:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Ошибка при получении ID поля Telegram',
+            error: error.message
+        });
+    }
+};
+
 // Экспортируем функции для основного функционала AmoCRM
 module.exports = {
     init,
@@ -277,6 +350,7 @@ module.exports = {
     testConnection,
     getContactByTelegramId,
     searchContactByTelegramId,
+    getTelegramFieldId,
     // Здесь будут основные функции для работы с AmoCRM
     // например: createContact, updateContact, searchContact и т.д.
 };
