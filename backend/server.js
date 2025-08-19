@@ -28,6 +28,8 @@ const vkRoutes = require('./routes/vk.routes');
 const instagramRoutes = require('./routes/instagram.routes');
 const vkOAuthRoutes = require('./routes/vk.oauth.routes');
 const vkConfigRoutes = require('./routes/vk.config.routes');
+const vkConfigOnlyRoutes = require('./routes/vk-config-only.routes');
+const vkTestRoutes = require('./routes/vk-test.routes');
 const activityRoutes = require('./routes/activity.routes');
 const referralRoutes = require('./routes/referral.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
@@ -65,6 +67,14 @@ app.use(fileUpload({
 
 // --- ВНЕДРЕНИЕ МОДУЛЕЙ ---
 app.use(injectModules);
+
+// --- ЛОГИРОВАНИЕ ВСЕХ ЗАПРОСОВ ДЛЯ ОТЛАДКИ ---
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.url} - ${new Date().toISOString()}`);
+    console.log('[REQUEST HEADERS]', req.headers);
+    console.log('[REQUEST BODY]', req.body);
+    next();
+});
 
 // --- ИНИЦИАЛИЗАЦИЯ КОНТРОЛЛЕРОВ ---
 orderController.init(WALK_URLS);
@@ -106,7 +116,8 @@ app.get('/health', async (req, res) => {
         // Проверка AmoCRM токенов
         try {
             const fs = require('fs');
-            const tokensPath = process.env.TOKENS_PATH + '/tokens.json';
+            const path = require('path');
+            const tokensPath = path.join(process.env.TOKENS_PATH, 'tokens.json');
             if (fs.existsSync(tokensPath)) {
                 const tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf8'));
                 if (tokens && tokens.refresh_token) {
@@ -170,11 +181,24 @@ app.use('/api', webhookRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', socialRoutes);
 app.use('/api/amocrm', amocrmRoutes);
+console.log('Registering VK OAuth routes...');
+app.use('/api/oauth/vk', vkOAuthRoutes);
+console.log('Registering VK config routes...');
+app.use('/api/vk/config', vkConfigRoutes);
+console.log('Registering VK config only routes...');
+app.use('/api/vk/config', vkConfigOnlyRoutes);
+console.log('Registering VK test routes...');
+app.use('/api/vk', vkTestRoutes);
+console.log('Registering VK routes...');
 app.use('/api', vkRoutes);
+
+// Добавляем прямой маршрут для VK Callback API без префикса /api
+// Это необходимо для подтверждения адреса сервера VK
+app.use('/webhooks', vkRoutes);
+console.log('Registering Instagram routes...');
 app.use('/api', instagramRoutes);
+console.log('Registering Instagram activity routes...');
 app.use('/api/instagram', require('./routes/instagram-activity.routes'));
-app.use('/api', vkOAuthRoutes);
-app.use('/api', vkConfigRoutes);
 app.use('/api', activityRoutes);
 app.use('/api', referralRoutes);
 app.use('/api', analyticsRoutes);
@@ -189,6 +213,21 @@ app.use('/api/oauth', oauthRouter);
 app.use('/api/social', socialRouter);
 app.use('/auth', authRouter);
 
+// Добавляем маршруты для авторизации через ВК
+app.use('/auth', vkOAuthRoutes);
+
+// --- УНИВЕРСАЛЬНЫЙ ОБРАБОТЧИК ДЛЯ ОТЛАДКИ ---
+app.use((req, res) => {
+    console.log(`[UNHANDLED REQUEST] ${req.method} ${req.url}`);
+    console.log('[UNHANDLED HEADERS]', req.headers);
+    console.log('[UNHANDLED BODY]', req.body);
+    res.status(404).json({
+        error: 'Route not found',
+        method: req.method,
+        url: req.url,
+        message: 'Проверьте правильность пути и метода запроса'
+    });
+});
 
 // --- ИЗМЕНЕНИЕ №2: БЛОК РАЗДАЧИ ФРОНТЕНДА УДАЛЕН ---
 // В нашей архитектуре с Docker + Caddy, за раздачу фронтенда отвечает

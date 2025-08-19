@@ -1,6 +1,11 @@
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      # Добавляем аргумент для принудительной пересборки
+      args:
+        - BUILD_VERSION=${BUILD_VERSION:-latest}
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -25,7 +30,12 @@ services:
     #   start_period: 40s
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # Добавляем аргумент для принудительной пересборки при каждом деплое
+      args:
+        - BUILD_VERSION=${BUILD_VERSION:-$(date +%s)}
     restart: unless-stopped
     ports:
       - "8080:80"
