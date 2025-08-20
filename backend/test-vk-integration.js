@@ -1,7 +1,7 @@
 // backend/test-vk-integration.js
 // Тестирование и диагностика VK интеграции
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 const axios = require('axios');
 
 console.log('🔵 === ДИАГНОСТИКА VK ИНТЕГРАЦИИ ===');
@@ -188,7 +188,7 @@ function generateTestUrls() {
         testAuthUrl.searchParams.set('redirect_uri', vkConfig.REDIRECT_URI);
         testAuthUrl.searchParams.set('response_type', 'code');
         testAuthUrl.searchParams.set('v', '5.199');
-        testAuthUrl.searchParams.set('scope', 'offline');
+        testAuthUrl.searchParams.set('scope', process.env.VK_OAUTH_SCOPE || 'email');
         testAuthUrl.searchParams.set('state', 'test_state_123');
 
         console.log('🔗 Тестовый URL авторизации VK:');

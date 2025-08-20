@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const vkController = require('../controllers/vk.controller');
+const vkController = require('../controllers/vk/webhook.controller');
 
 // Логирование всех запросов к VK роутам
 router.use((req, res, next) => {

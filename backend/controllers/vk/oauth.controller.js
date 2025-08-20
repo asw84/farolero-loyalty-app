@@ -6,7 +6,7 @@ const htmlTemplateService = require('../services/html.template.service');
  * Получает конфигурацию VK для frontend
  * GET /api/vk/config
  */
-const getVKConfig = async (req, res) => {
+const getVKClientConfig = async (req, res) => {
     console.log('[VK_ID_CONTROLLER] 🔧 getVKConfig called!');
     try {
         const config = {
@@ -138,7 +138,7 @@ const handleVKLogin = async (req, res) => {
         const redirectUri = encodeURIComponent(process.env.VK_REDIRECT_URI);
         const state = Buffer.from(JSON.stringify({ tg_user_id })).toString('base64');
         
-        const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&v=5.199&state=${state}&scope=offline,email`;
+        const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&v=5.199&state=${state}&scope=email`;
         
         console.log(`[VK_ID_CONTROLLER] 🔗 Перенаправление на VK OAuth: ${authUrl}`);
         
@@ -229,7 +229,8 @@ module.exports = {
     verifyVKIDAuth,
     getTemplatesConfig,
     updateTemplatesConfig,
-    getVKConfig,
+    getVKConfig: getVKClientConfig, // Оставляем старый экспорт для обратной совместимости, если где-то используется
     handleVKLogin,
-    handleCallback
+    handleCallback,
+    getVKClientConfig
 };

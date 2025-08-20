@@ -1,7 +1,7 @@
 // backend/routes/vk.oauth.routes.js
 const express = require('express');
 const router = express.Router();
-const vkOAuthController = require('../controllers/vk.oauth.controller');
+const vkOAuthController = require('../controllers/vk/oauth.controller');
 
 console.log('[VK_OAUTH_ROUTES] Initializing VK OAuth routes...');
 
@@ -49,7 +49,7 @@ console.log('[VK_OAUTH_ROUTES] Registered GET /test');
 
 // Получение конфигурации VK для frontend
 // GET /api/vk/config -> /config
-router.get('/config', vkOAuthController.getVKConfig);
+router.get('/config', vkOAuthController.getVKClientConfig);
 console.log('[VK_OAUTH_ROUTES] Registered GET /config');
 
 console.log('[VK_OAUTH_ROUTES] VK OAuth routes initialized successfully');
