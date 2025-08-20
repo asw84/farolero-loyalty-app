@@ -1,5 +1,5 @@
 const express = require('express');
-const { verifyAndReward } = require('../controllers/vk/action.controller');
+const { verifyAndReward } = require('../controllers/vk/action_controller');
 
 const router = express.Router();
 

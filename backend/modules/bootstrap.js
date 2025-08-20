@@ -14,7 +14,7 @@ const RFMAnalyticsModule = require('./business/RFMAnalytics');
 
 // Утилиты
 const TokenManager = require('../utils/token-manager');
-const VKConfigValidator = require('../utils/vk-config-validator');
+const VKConfigValidator = require('../utils/vk_config_validator');
 
 /**
  * Простой logger для модулей

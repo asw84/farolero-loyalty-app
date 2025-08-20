@@ -13,7 +13,7 @@ const fileUpload = require('express-fileupload');
 const walkService = require('./services/walk.service');
 const orderController = require('./controllers/order.controller');
 const { initializeDatabase } = require('./database');
-const VKConfigValidator = require('./utils/vk-config-validator');
+const VKConfigValidator = require('./utils/vk_config_validator');
 const { bootstrapModules, injectModules } = require('./modules/bootstrap');
 
 // --- ИМПОРТЫ МАРШРУТОВ ---
@@ -26,10 +26,10 @@ const socialRoutes = require('./routes/social.routes');
 const amocrmRoutes = require('./routes/amocrm.routes');
 const vkRoutes = require('./routes/vk.routes');
 const instagramRoutes = require('./routes/instagram.routes');
-const vkOAuthRoutes = require('./routes/vk.oauth.routes');
-const vkConfigRoutes = require('./routes/vk.config.routes');
-const vkConfigOnlyRoutes = require('./routes/vk-config-only.routes');
-const vkTestRoutes = require('./routes/vk-test.routes');
+const vkOAuthRoutes = require('./routes/vk_oauth_routes');
+const vkConfigRoutes = require('./routes/vk_config_routes');
+const vkConfigOnlyRoutes = require('./routes/vk_config_only_routes');
+const vkTestRoutes = require('./routes/vk_test_routes');
 const activityRoutes = require('./routes/activity.routes');
 const referralRoutes = require('./routes/referral.routes');
 const analyticsRoutes = require('./routes/analytics.routes');

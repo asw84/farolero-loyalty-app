@@ -1,6 +1,6 @@
-const vk = require('../services/vk.service');
-const { addPoints } = require('../services/loyaltyService');
-const amocrm = require('../services/amocrm.service');
+const vk = require('../../services/vk.service');
+const { addPoints } = require('../../services/loyaltyService');
+const amocrm = require('../../services/amocrm.service');
 
 // Ожидаем, что в req.user уже есть contactId и vkId (после привязки)
 async function verifyAndReward(req, res) {

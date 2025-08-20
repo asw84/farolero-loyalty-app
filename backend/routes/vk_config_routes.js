@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const vkConfigController = require('../controllers/vk/config.controller');
+const vkConfigController = require('../controllers/vk/config_controller');
 
 // Логирование всех запросов к VK Config роутам
 router.use((req, res, next) => {

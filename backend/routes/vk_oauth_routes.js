@@ -1,7 +1,7 @@
 // backend/routes/vk.oauth.routes.js
 const express = require('express');
 const router = express.Router();
-const vkOAuthController = require('../controllers/vk/oauth.controller');
+const vkOAuthController = require('../controllers/vk/oauth_controller');
 
 console.log('[VK_OAUTH_ROUTES] Initializing VK OAuth routes...');
 

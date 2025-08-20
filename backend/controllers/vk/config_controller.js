@@ -1,6 +1,6 @@
 // backend/controllers/vk.config.controller.js
 
-const vkConfigService = require('../services/vk.config.service');
+const vkConfigService = require('../../services/vk_config_service');
 
 /**
  * Получает текущую конфигурацию VK

@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const vkOAuthController = require('../controllers/vk/oauth.controller');
+const vkOAuthController = require('../controllers/vk/oauth_controller');
 
 console.log('[VK_CONFIG_ONLY_ROUTES] Initializing VK config only routes...');
 

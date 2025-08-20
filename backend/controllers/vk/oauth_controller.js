@@ -1,6 +1,6 @@
 // backend/controllers/vk.oauth.controller.js
-const vkOAuthService = require('../services/vk.oauth.service');
-const htmlTemplateService = require('../services/html.template.service');
+const vkOAuthService = require('../../services/vk_oauth_service');
+const htmlTemplateService = require('../../services/html.template.service');
 
 /**
  * Получает конфигурацию VK для frontend
