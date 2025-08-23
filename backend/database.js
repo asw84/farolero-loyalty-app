@@ -185,6 +185,10 @@ async function findUserById(userId) {
     return await dbGet(`SELECT * FROM users WHERE id = ?`, [userId]);
 }
 
+async function findUserByVkId(vkId) {
+    return await dbGet(`SELECT * FROM users WHERE vk_user_id = ?`, [vkId]);
+}
+
 async function findOrCreateUser(identifier, source_field, referrerId = null) {
     let user = await dbGet(`SELECT * FROM users WHERE ${source_field} = ?`, [identifier]);
     if (user) {
@@ -371,6 +375,7 @@ module.exports = {
     dbAll,
     findUserByTelegramId,
     findUserById,
+    findUserByVkId,
     findOrCreateUser,
     updateUser,
     addPoints,

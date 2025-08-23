@@ -1,6 +1,8 @@
 // backend/controllers/vk.oauth.controller.js
 const vkOAuthService = require('../../services/vk_oauth_service');
+const userService = require('../../services/user.service'); // Импортируем userService
 const htmlTemplateService = require('../../services/html.template.service');
+const { generateCodeVerifier, generateCodeChallenge } = require('../../utils/pkce-helper');
 
 /**
  * Получает конфигурацию VK для frontend
@@ -120,39 +122,52 @@ const updateTemplatesConfig = async (req, res) => {
 };
 
 /**
- * Обрабатывает OAuth авторизацию через VK
+ * NEW: Обрабатывает OAuth авторизацию через VK с использованием PKCE.
  * GET /auth/vk/login?tg_user_id=123
  */
 const handleVKLogin = async (req, res) => {
     try {
         const { tg_user_id } = req.query;
-        
         if (!tg_user_id) {
-            return res.status(400).send('Отсутствует параметр tg_user_id');
+            return res.status(400).send(htmlTemplateService.getErrorPage('Отсутствует параметр tg_user_id'));
         }
-        
+
         console.log(`[VK_ID_CONTROLLER] 🔐 Запрос на авторизацию VK для Telegram ID: ${tg_user_id}`);
+
+        // --- PKCE Flow ---
+        const codeVerifier = generateCodeVerifier();
+        const codeChallenge = generateCodeChallenge(codeVerifier);
+
+        const statePayload = {
+            tg_user_id: tg_user_id,
+            code_verifier: codeVerifier // Сохраняем verifier в state
+        };
+        const state = Buffer.from(JSON.stringify(statePayload)).toString('base64');
         
-        // Формируем URL для авторизации VK OAuth
         const clientId = process.env.VK_CLIENT_ID;
-        const redirectUri = encodeURIComponent(process.env.VK_REDIRECT_URI);
-        const state = Buffer.from(JSON.stringify({ tg_user_id })).toString('base64');
-        
-        const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&v=5.199&state=${state}&scope=email`;
-        
-        console.log(`[VK_ID_CONTROLLER] 🔗 Перенаправление на VK OAuth: ${authUrl}`);
-        
-        // Перенаправляем пользователя на страницу авторизации VK
-        res.redirect(authUrl);
-        
+        const redirectUri = process.env.VK_REDIRECT_URI;
+
+        const authUrl = new URL('https://id.vk.com/authorize');
+        authUrl.searchParams.append('client_id', clientId);
+        authUrl.searchParams.append('redirect_uri', redirectUri);
+        authUrl.searchParams.append('response_type', 'code');
+        authUrl.searchParams.append('state', state);
+        authUrl.searchParams.append('scope', 'email');
+        authUrl.searchParams.append('code_challenge', codeChallenge);
+        authUrl.searchParams.append('code_challenge_method', 'S256');
+
+        console.log(`[VK_ID_CONTROLLER] 🔗 Перенаправление на VK ID OAuth: ${authUrl.toString()}`);
+        res.redirect(authUrl.toString());
+
     } catch (error) {
         console.error('[VK_ID_CONTROLLER] ❌ Ошибка при обработке запроса на авторизацию VK:', error);
-        res.status(500).send('Внутренняя ошибка сервера');
+        res.status(500).send(htmlTemplateService.getErrorPage('Внутренняя ошибка сервера'));
     }
 };
 
+
 /**
- * Обрабатывает callback от VK OAuth
+ * NEW: Обрабатывает callback от VK OAuth, обменивает код на токен и получает данные.
  * GET /api/oauth/vk/callback?code=...&state=...
  */
 const handleCallback = async (req, res) => {
@@ -160,68 +175,36 @@ const handleCallback = async (req, res) => {
         const { code, state } = req.query;
         
         if (!code || !state) {
-            return res.status(400).send('Отсутствуют необходимые параметры');
+            return res.status(400).send(htmlTemplateService.getErrorPage('Отсутствуют параметры code или state'));
         }
-        
-        // Декодируем state для получения tg_user_id
-        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
-        const { tg_user_id } = stateData;
-        
+
+        const statePayload = JSON.parse(Buffer.from(state, 'base64').toString());
+        const { tg_user_id, code_verifier } = statePayload;
+
+        if (!tg_user_id || !code_verifier) {
+            return res.status(400).send(htmlTemplateService.getErrorPage('Некорректный параметр state'));
+        }
+
         console.log(`[VK_ID_CONTROLLER] 🔐 Получен callback от VK OAuth для Telegram ID: ${tg_user_id}`);
+
+        // 1. Обмен кода на токен
+        const tokenData = await vkOAuthService.exchangeCodeForToken(code, code_verifier);
+        const { access_token, user_id: vk_user_id } = tokenData;
+
+        // 2. Получение данных пользователя VK
+        const vkUserData = await vkOAuthService.getVKUserData(access_token, vk_user_id);
+
+        // 3. Сохранение/обновление пользователя в нашей БД и AmoCRM
+        await userService.linkVkToUser(tg_user_id, vkUserData.id, vkUserData);
         
-        // Здесь должна быть логика обмена кода на токен и получения данных пользователя
-        // Для упрощения примера, просто покажем страницу успеха
-        
-        const html = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Авторизация VK</title>
-                <style>
-                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                    .success { color: green; }
-                    .error { color: red; }
-                </style>
-            </head>
-            <body>
-                <h1 class="success">✅ Авторизация VK завершена!</h1>
-                <p>Аккаунт VK успешно привязан к вашему Telegram аккаунту.</p>
-                <p>Теперь вы можете закрыть эту вкладку и вернуться в Telegram.</p>
-                <script>
-                    // Автоматическое закрытие вкладки через 3 секунды
-                    setTimeout(() => {
-                        window.close();
-                    }, 3000);
-                </script>
-            </body>
-            </html>
-        `;
-        
-        res.send(html);
+        console.log(`[VK_ID_CONTROLLER] ✅ Пользователь VK ${vkUserData.first_name} ${vkUserData.last_name} (ID: ${vkUserData.id}) успешно авторизован и привязан к Telegram ID ${tg_user_id}.`);
+
+        // Показываем страницу успеха
+        res.send(htmlTemplateService.getSuccessPage('Аккаунт VK успешно привязан!'));
         
     } catch (error) {
         console.error('[VK_ID_CONTROLLER] ❌ Ошибка при обработке callback от VK OAuth:', error);
-        
-        const html = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Ошибка авторизации VK</title>
-                <style>
-                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                    .success { color: green; }
-                    .error { color: red; }
-                </style>
-            </head>
-            <body>
-                <h1 class="error">❌ Ошибка авторизации VK</h1>
-                <p>Произошла ошибка при привязке аккаунта VK.</p>
-                <p>Попробуйте еще раз или обратитесь в поддержку.</p>
-            </body>
-            </html>
-        `;
-        
-        res.status(500).send(html);
+        res.status(500).send(htmlTemplateService.getErrorPage(error.message || 'Ошибка авторизации VK'));
     }
 };
 

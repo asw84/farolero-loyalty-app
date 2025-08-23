@@ -2,7 +2,7 @@
 // ФИНАЛЬНАЯ ВЕРСИЯ С ПОДДЕРЖКОЙ STORAGE_MODE
 
 const amocrmService = require('./amocrm.service');
-const { findUserByTelegramId, findOrCreateUser, updateUser } = require('../database');
+const { findUserByTelegramId, findOrCreateUser, updateUser, findUserByVkId } = require('../database');
 const { STORAGE_MODE, APP_BASE_URL } = require('../config');
 const { calculateStatus } = require('./loyaltyService');
 const statusService = require('./status.service');
@@ -103,6 +103,56 @@ async function getUserData(telegramId, referrerId = null) {
     }
 }
 
+/**
+ * Привязывает VK ID к пользователю по его Telegram ID.
+ * @param {string} telegramId - Telegram ID пользователя.
+ * @param {string} vkUserId - VK ID пользователя.
+ * @param {object} vkUserData - Дополнительные данные из VK.
+ * @returns {Promise<object>} Результат операции.
+ */
+async function linkVkToUser(telegramId, vkUserId, vkUserData) {
+    console.log(`[UserService] Привязка VK ID ${vkUserId} к Telegram ID ${telegramId}`);
+
+    // 1. Проверить, не занят ли уже этот VK ID другим пользователем
+    const existingVkUser = await findUserByVkId(vkUserId);
+    if (existingVkUser && existingVkUser.telegram_user_id !== telegramId) {
+        console.error(`[UserService] ❌ Попытка привязать VK ID ${vkUserId}, который уже используется пользователем ${existingVkUser.telegram_user_id}`);
+        throw new Error('Этот VK аккаунт уже привязан к другому профилю.');
+    }
+
+    // 2. Найти пользователя по Telegram ID или создать нового, если его нет
+    let user = await findUserByTelegramId(telegramId);
+    if (!user) {
+        console.log(`[UserService] Пользователь с Telegram ID ${telegramId} не найден. Создаем нового.`);
+        user = await findOrCreateUser(telegramId, 'telegram_user_id');
+    }
+
+    // 3. Обновить данные пользователя
+    const updateData = {
+        vk_user_id: vkUserId
+        // Здесь можно добавить обновление других полей, например, имени, если это необходимо
+        // first_name: vkUserData.first_name,
+        // last_name: vkUserData.last_name
+    };
+
+    await updateUser(telegramId, updateData);
+    console.log(`[UserService] ✅ VK ID ${vkUserId} успешно привязан к пользователю ${telegramId}`);
+    
+    // 4. (Опционально) Синхронизировать с AmoCRM
+    if (STORAGE_MODE === 'hybrid' || STORAGE_MODE === 'crm') {
+       try {
+           await amocrmService.updateUserVkId(telegramId, vkUserId);
+           console.log(`[UserService] ✅ Данные VK ID синхронизированы с AmoCRM для ${telegramId}`);
+       } catch (amoError) {
+           console.warn(`[UserService] ⚠️ Не удалось синхронизировать VK ID с AmoCRM для ${telegramId}:`, amoError.message);
+           // Не бросаем ошибку, чтобы не прерывать основной флоу
+       }
+    }
+    
+    return { success: true, message: 'Аккаунт VK успешно привязан.' };
+}
+
 module.exports = {
     getUserData,
+    linkVkToUser
 };

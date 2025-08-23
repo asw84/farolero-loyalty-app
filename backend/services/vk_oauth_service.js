@@ -3,10 +3,89 @@ const axios = require('axios');
 const amocrmClient = require('../amocrm/apiClient');
 const { VK_ID_FIELD_ID } = require('../config');
 
+// --- НОВЫЕ КОНСТАНТЫ ---
+const VK_API_VERSION = '5.199';
+const VK_TOKEN_URL = 'https://id.vk.com/oauth2/token';
+const VK_USER_INFO_URL = 'https://api.vk.com/method/users.get';
+
+
 // Переменные окружения для VK ID
 const {
-    VK_SERVICE_KEY // Сервисный ключ доступа, должен быть добавлен в .env
+    VK_SERVICE_KEY, // Сервисный ключ доступа, должен быть добавлен в .env
+    VK_CLIENT_ID,
+    VK_CLIENT_SECRET,
+    VK_REDIRECT_URI
 } = process.env;
+
+/**
+ * Обменивает авторизационный код на access token.
+ * @param {string} code - Авторизационный код от VK.
+ * @param {string} codeVerifier - PKCE code verifier.
+ * @returns {Promise<object>} Объект с токенами.
+ */
+async function exchangeCodeForToken(code, codeVerifier) {
+    console.log('[VK_ID_SERVICE] 🚀 Обмен кода на токен...');
+
+    if (!VK_CLIENT_ID || !VK_CLIENT_SECRET || !VK_REDIRECT_URI) {
+        throw new Error('Не настроены обязательные переменные окружения для VK OAuth.');
+    }
+
+    const params = new URLSearchParams();
+    params.append('grant_type', 'authorization_code');
+    params.append('client_id', VK_CLIENT_ID);
+    params.append('client_secret', VK_CLIENT_SECRET);
+    params.append('redirect_uri', VK_REDIRECT_URI);
+    params.append('code', code);
+    params.append('code_verifier', codeVerifier);
+
+    try {
+        const response = await axios.post(VK_TOKEN_URL, params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        console.log('[VK_ID_SERVICE] ✅ Токен успешно получен.');
+        return response.data;
+
+    } catch (error) {
+        console.error('[VK_ID_SERVICE] ❌ Ошибка при обмене кода на токен:', error.response?.data || error.message);
+        throw new Error('Не удалось обменять код на токен VK.');
+    }
+}
+
+/**
+ * Получает информацию о пользователе VK.
+ * @param {string} accessToken - Access token пользователя.
+ * @param {string} userId - ID пользователя VK.
+ * @returns {Promise<object>} Данные пользователя.
+ */
+async function getVKUserData(accessToken, userId) {
+    console.log(`[VK_ID_SERVICE] 👤 Получение данных для пользователя VK ID: ${userId}`);
+    
+    try {
+        const response = await axios.get(VK_USER_INFO_URL, {
+            params: {
+                user_ids: userId,
+                fields: 'id,first_name,last_name,sex,bdate,photo_max_orig',
+                access_token: accessToken,
+                v: VK_API_VERSION
+            }
+        });
+
+        if (response.data.error) {
+            console.error('[VK_ID_SERVICE] ❌ Ошибка от VK API при получении данных:', response.data.error.error_msg);
+            throw new Error(response.data.error.error_msg);
+        }
+
+        const userData = response.data.response[0];
+        console.log(`[VK_ID_SERVICE] ✅ Данные для пользователя ${userData.first_name} ${userData.last_name} получены.`);
+        return userData;
+
+    } catch (error) {
+        console.error('[VK_ID_SERVICE] ❌ Ошибка при запросе данных пользователя VK:', error.message);
+        throw new Error('Не удалось получить данные пользователя VK.');
+    }
+}
+
 
 /**
  * Проверяет токен, полученный от VK ID SDK, и привязывает аккаунт.
@@ -111,6 +190,8 @@ async function verifyTokenWithVK(accessToken, expectedUuid) {
 
 
 module.exports = {
-    verifyAndLinkAccount
+    verifyAndLinkAccount,
+    exchangeCodeForToken,
+    getVKUserData
 };
 

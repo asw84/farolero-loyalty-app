@@ -4,6 +4,13 @@
 const amocrmClient = require('../amocrm/apiClient');
 const { POINTS_FIELD_ID, TELEGRAM_ID_FIELD_ID, VK_ID_FIELD_ID, STATUS_FIELD_ID } = require('../config');
 
+async function findContactByVkId(vkId) {
+    // Эта функция может потребовать кастомной логики в apiClient для поиска по ID VK
+    // Пока реализуем через общий поиск, если apiClient это поддерживает
+    const contacts = await amocrmClient.findContactByCustomField(vkId, VK_ID_FIELD_ID);
+    return contacts?.[0] || null;
+}
+
 async function findContactByTelegramId(telegramId) {
     const contact = await amocrmClient.findContactByTelegramId(telegramId);
     
@@ -140,9 +147,52 @@ async function updateUserStatus(telegramId, status) {
     }
 }
 
+/**
+ * Обновляет VK ID пользователя в AmoCRM.
+ * @param {string} telegramId - Telegram ID пользователя.
+ * @param {string} vkUserId - Новый VK ID.
+ * @returns {Promise<boolean>} Результат операции.
+ */
+async function updateUserVkId(telegramId, vkUserId) {
+    try {
+        console.log(`[AmoCRM] Обновление VK ID для ${telegramId}: ${vkUserId}`);
+        
+        const contact = await findContactByTelegramId(telegramId);
+        if (!contact) {
+            console.warn(`[AmoCRM] ⚠️ Контакт с Telegram ID ${telegramId} не найден для обновления VK ID.`);
+            return false;
+        }
+
+        if (!VK_ID_FIELD_ID) {
+            console.error('[AmoCRM] ❌ VK_ID_FIELD_ID не настроен в конфигурации!');
+            throw new Error('VK_ID_FIELD_ID is not configured.');
+        }
+
+        const updateResult = await amocrmClient.updateContact(contact.id, {
+            [VK_ID_FIELD_ID]: String(vkUserId)
+        });
+
+        if (updateResult) {
+            console.log(`[AmoCRM] ✅ VK ID обновлен: ${telegramId} → ${vkUserId}`);
+            return true;
+        } else {
+            console.error(`[AmoCRM] ❌ Не удалось обновить VK ID для контакта ${contact.id}`);
+            return false;
+        }
+
+    } catch (error) {
+        console.error(`[AmoCRM] ❌ Критическая ошибка при обновлении VK ID:`, error);
+        // Не пробрасываем ошибку дальше, чтобы не сломать основной флоу авторизации
+        return false;
+    }
+}
+
+
 module.exports = {
     findContactByTelegramId,
+    findContactByVkId,
     extractPointsFromContact,
     updateUserStatus,
+    updateUserVkId,
     getCustomField
 };
