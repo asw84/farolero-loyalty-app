@@ -22,6 +22,25 @@ services:
       - NODE_ENV=production
       - STORAGE_PATH=/app/persistent_data
       - TOKENS_PATH=/app/tokens
+      - VK_CLIENT_ID=54020829
+      - VK_CLIENT_SECRET=eZR36GPtgT5ZB4KnWt8k
+      - VK_CONFIRMATION_TOKEN=bca18f91
+      - VK_REDIRECT_URI=https://api.5425685-au70735.twc1.net/api/oauth/vk/callback
+      - VK_SERVICE_KEY=90b2dde290b2dde290b2dde2c2938a9a5e990b290b2dde2f8270e5045f0bf1ba8b7a581
+      - VK_GROUP_ID=231950751
+      - VK_GROUP_TOKEN=vk1.a.4a6NyPtleJQdzmuKgLSzhLNJLatSDt5FSMjRkCa8LbQ9I1h2HXfIwF5mKavTd1FUVjhlwg98nKEBBfEWt57erkysZzVFNF0ba27koppUR7Bos2pVkzZbwTliBukbYvV_3PYa_HlS4N_bqqXQyuZpV6nhl-XRptCrZ_JlWniMDHZU9GKieCD49EVOm3gXpdMFSi4jOFxj2RdghROLDRhe1w
+      - VK_OAUTH_SCOPE=email
+      - VK_SECRET_KEY=gK7pW9sRzE2xY4qA0jF8vU3mB1nC5h
+      - VK_ACCESS_TOKEN=c0df479ac0df479ac0df479a4cc3e70d47cc0dfc0df479aa84aa150b046673ace5efdd3
+      - JWT_SECRET=your_super_secret_jwt_key_use_long_random_string
+      - APP_BASE_URL=https://api.5425685-au70735.twc1.net/api/oauth/vk/callback
+      - PORT=3001
+      - AMOCRM_DOMAIN=https://new5a097b0640fce.amocrm.ru
+      - AMOCRM_CLIENT_ID=fcd72815-71ea-4aed-ba97-abe6936d2f9a
+      - AMOCRM_CLIENT_SECRET=FqeEGjHM5oT7A59JzAQVXlyt9KPRhI0lJvBecOVewBqbDxhvTed9snB2hIT8q7ex
+      - AMOCRM_REDIRECT_URI=http://localhost:3001/api/amocrm/callback
+      - AMOCRM_SUBDOMAIN=new5a097b0640fce
+      - ADMIN_SECRET_KEY=your_super_secret_admin_key_here
     # healthcheck:
     #   test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
     #   interval: 30s
@@ -40,7 +59,7 @@ services:
     ports:
       - "8080:80"
     environment:
-      - VITE_VK_APP_ID=54020028
+      - VITE_VK_APP_ID=54020829
       - VITE_API_URL=https://api.5425685-au70735.twc1.net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/"]
