@@ -149,7 +149,7 @@ const VKIDAuth: React.FC<VKIDAuthProps> = ({ onSuccess, onError, telegramId }) =
       <div style={{ marginTop: '20px', padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
         <h4 style={{ margin: '0 0 15px 0', color: '#333' }}>Альтернативная авторизация VK</h4>
         <a 
-          href={`/auth/vk/login?tg_user_id=${telegramId}`}
+          href={`${import.meta.env.VITE_API_URL || 'https://api.5425685-au70735.twc1.net'}/auth/vk/login?tg_user_id=${telegramId}`}
           target="_blank" 
           rel="noopener noreferrer"
           style={{
