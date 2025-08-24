@@ -129,7 +129,7 @@ const handleVKLogin = async (req, res) => {
     try {
         const { tg_user_id } = req.query;
         if (!tg_user_id) {
-            return res.status(400).send(htmlTemplateService.getErrorPage('Отсутствует параметр tg_user_id'));
+            return res.status(400).send(htmlTemplateService.generateErrorPage('Отсутствует параметр tg_user_id'));
         }
 
         console.log(`[VK_ID_CONTROLLER] 🔐 Запрос на авторизацию VK для Telegram ID: ${tg_user_id}`);
@@ -161,7 +161,7 @@ const handleVKLogin = async (req, res) => {
 
     } catch (error) {
         console.error('[VK_ID_CONTROLLER] ❌ Ошибка при обработке запроса на авторизацию VK:', error);
-        res.status(500).send(htmlTemplateService.getErrorPage('Внутренняя ошибка сервера'));
+        res.status(500).send(htmlTemplateService.generateErrorPage('Внутренняя ошибка сервера'));
     }
 };
 
@@ -175,14 +175,14 @@ const handleCallback = async (req, res) => {
         const { code, state } = req.query;
         
         if (!code || !state) {
-            return res.status(400).send(htmlTemplateService.getErrorPage('Отсутствуют параметры code или state'));
+            return res.status(400).send(htmlTemplateService.generateErrorPage('Отсутствуют параметры code или state'));
         }
 
         const statePayload = JSON.parse(Buffer.from(state, 'base64').toString());
         const { tg_user_id, code_verifier } = statePayload;
 
         if (!tg_user_id || !code_verifier) {
-            return res.status(400).send(htmlTemplateService.getErrorPage('Некорректный параметр state'));
+            return res.status(400).send(htmlTemplateService.generateErrorPage('Некорректный параметр state'));
         }
 
         console.log(`[VK_ID_CONTROLLER] 🔐 Получен callback от VK OAuth для Telegram ID: ${tg_user_id}`);
@@ -200,11 +200,11 @@ const handleCallback = async (req, res) => {
         console.log(`[VK_ID_CONTROLLER] ✅ Пользователь VK ${vkUserData.first_name} ${vkUserData.last_name} (ID: ${vkUserData.id}) успешно авторизован и привязан к Telegram ID ${tg_user_id}.`);
 
         // Показываем страницу успеха
-        res.send(htmlTemplateService.getSuccessPage('Аккаунт VK успешно привязан!'));
+        res.send(htmlTemplateService.generateSuccessPage('Аккаунт VK успешно привязан!'));
         
     } catch (error) {
         console.error('[VK_ID_CONTROLLER] ❌ Ошибка при обработке callback от VK OAuth:', error);
-        res.status(500).send(htmlTemplateService.getErrorPage(error.message || 'Ошибка авторизации VK'));
+        res.status(500).send(htmlTemplateService.generateErrorPage(error.message || 'Ошибка авторизации VK'));
     }
 };
 
