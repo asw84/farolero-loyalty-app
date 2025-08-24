@@ -11,7 +11,7 @@ router.use((req, res, next) => {
 });
 
 // VK будет отправлять все события на один и тот же эндпоинт
-// POST /api/webhooks/vk -> /webhooks/vk
-router.post('/webhooks/vk', vkController.handleVkCallback);
+// POST /api/webhooks/vk -> /
+router.post('/vk', vkController.handleVkCallback);
 
 module.exports = router;
