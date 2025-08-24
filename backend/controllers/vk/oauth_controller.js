@@ -195,17 +195,20 @@ const handleCallback = async (req, res) => {
         const vkUserData = await vkOAuthService.getVKUserData(access_token, vk_user_id);
 
         // 3. Сохранение/обновление пользователя в нашей БД и AmoCRM
-        await userService.linkVkToUser(tg_user_id, vkUserData.id, vkUserData);
+        await userService.linkVkToUser(tg_user_id, vk_user_id, vkUserData);
         
         console.log(`[VK_ID_CONTROLLER] ✅ Пользователь VK ${vkUserData.first_name} ${vkUserData.last_name} (ID: ${vkUserData.id}) успешно авторизован и привязан к Telegram ID ${tg_user_id}.`);
 
-        // Показываем страницу успеха
-        res.send(htmlTemplateService.generateSuccessPage('Аккаунт VK успешно привязан!'));
-        
-    } catch (error) {
-        console.error('[VK_ID_CONTROLLER] ❌ Ошибка при обработке callback от VK OAuth:', error);
-        res.status(500).send(htmlTemplateService.generateErrorPage(error.message || 'Ошибка авторизации VK'));
-    }
+        // Успешная авторизация
+        return htmlTemplateService.sendSuccess(res);
+  } catch (error) {
+    console.error('--- [OAUTH CONTROLLER CATCH BLOCK] ---');
+    console.error(`КОНТРОЛЛЕР ПОЙМАЛ ОШИБКУ: ${new Date().toISOString()}`);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('--- END CONTROLLER CATCH BLOCK ---');
+    return htmlTemplateService.sendError(res, 'oauth_vk_failed', 'Не удалось завершить авторизацию VK.');
+  }
 };
 
 module.exports = {
