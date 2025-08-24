@@ -24,8 +24,6 @@ const {
  * @returns {Promise<object>} Объект с токенами.
  */
 async function exchangeCodeForToken(code, codeVerifier) {
-    console.log('[VK_ID_SERVICE] 🚀 Обмен кода на токен...');
-
     if (!VK_CLIENT_ID || !VK_CLIENT_SECRET || !VK_REDIRECT_URI) {
         throw new Error('Не настроены обязательные переменные окружения для VK OAuth.');
     }
@@ -39,16 +37,6 @@ async function exchangeCodeForToken(code, codeVerifier) {
         params.append('code', code);
         params.append('code_verifier', codeVerifier);
 
-        console.log('--- [VK Token Exchange] Отправка запроса на обмен токена ---');
-        console.log('URL:', VK_TOKEN_URL);
-        console.log('grant_type:', 'authorization_code');
-        console.log('client_id:', VK_CLIENT_ID);
-        console.log('client_secret:', `*****${VK_CLIENT_SECRET.slice(-4)}`); // Маскируем ключ в логах
-        console.log('redirect_uri:', VK_REDIRECT_URI);
-        console.log('code (длина):', code.length);
-        console.log('code_verifier (длина):', codeVerifier.length);
-        console.log('----------------------------------------------------');
-
         const response = await axios.post(VK_TOKEN_URL, params, {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -59,13 +47,8 @@ async function exchangeCodeForToken(code, codeVerifier) {
         return response.data;
 
     } catch (error) {
-        if (error.response) {
-            console.error('❌ [VK Token Exchange] Ошибка от VK API. Status:', error.response.status);
-            console.error('❌ [VK Token Exchange] Response Data:', error.response.data);
-        } else {
-            console.error('❌ [VK Token Exchange] Неизвестная ошибка Axios:', error.message);
-        }
-        throw new Error('Failed to exchange VK code for token');
+        console.error('[VK_ID_SERVICE] ❌ Ошибка при обмене кода на токен:', error.response?.data || error.message);
+        throw new Error('Не удалось обменять код на токен VK.');
     }
 }
 

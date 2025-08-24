@@ -202,11 +202,7 @@ const handleCallback = async (req, res) => {
         // Успешная авторизация
         return htmlTemplateService.sendSuccess(res);
   } catch (error) {
-    console.error('--- [OAUTH CONTROLLER CATCH BLOCK] ---');
-    console.error(`КОНТРОЛЛЕР ПОЙМАЛ ОШИБКУ: ${new Date().toISOString()}`);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    console.error('--- END CONTROLLER CATCH BLOCK ---');
+    console.error(`[VK_ID_CONTROLLER] ❌ Ошибка при обработке callback от VK OAuth:`, error.message);
     return htmlTemplateService.sendError(res, 'oauth_vk_failed', 'Не удалось завершить авторизацию VK.');
   }
 };
