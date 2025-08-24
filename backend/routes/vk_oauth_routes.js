@@ -19,10 +19,10 @@ console.log('[VK_OAUTH_ROUTES] Registered POST /verify-auth');
 
 // Старые маршруты, которые больше не используются, будут удалены.
 // GET /auth/vk/login?tg_user_id=123
-router.get('/auth/vk/login', vkOAuthController.handleVKLogin);
+router.get('/login', vkOAuthController.handleVKLogin);
 
 // GET /api/oauth/vk/callback?code=...&state=...
-router.get('/oauth/vk/callback', vkOAuthController.handleCallback);
+router.get('/callback', vkOAuthController.handleCallback);
 
 // API маршруты для управления HTML шаблонами (оставлено для возможной кастомизации страниц ошибок)
 // GET /api/vk/oauth/templates/config -> /templates/config

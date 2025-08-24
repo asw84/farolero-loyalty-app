@@ -179,8 +179,8 @@ app.use('/api', webhookRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', socialRoutes);
 app.use('/api/amocrm', amocrmRoutes);
-console.log('Registering VK OAuth routes...');
-app.use('/api/oauth/vk', vkOAuthRoutes);
+// console.log('Registering VK OAuth routes...');
+// app.use('/api/oauth/vk', vkOAuthRoutes); // УДАЛЕНО: Неправильная регистрация
 // --- УДАЛЕНО: Неправильная регистрация роутов ---
 // console.log('Registering VK config routes...');
 // app.use('/api/vk/config', vkConfigRoutes);
@@ -219,7 +219,12 @@ app.use('/api/social', socialRouter);
 app.use('/auth', authRouter);
 
 // Добавляем маршруты для авторизации через ВК
-app.use('/auth', vkOAuthRoutes);
+// app.use('/auth', vkOAuthRoutes); // УДАЛЕНО: Дублирующая регистрация
+
+// --- НОВАЯ ЕДИНАЯ РЕГИСТРАЦИЯ VK OAUTH ---
+app.use('/auth/vk', vkOAuthRoutes);
+console.log('✅ Registered VK OAuth routes at /auth/vk');
+
 
 // --- УНИВЕРСАЛЬНЫЙ ОБРАБОТЧИК ДЛЯ ОТЛАДКИ ---
 app.use((req, res) => {
