@@ -9,8 +9,9 @@ import { testAmoCRMConnection, getAmoCRMContact } from '../api';
 
 const ProfilePage = () => {
   const { userData, loading } = useUser();
-  const [vkAuthStatus, setVkAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [vkAuthMessage, setVkAuthMessage] = useState('');
+  // --- УДАЛЕНО: Состояния для VK ID SDK больше не нужны ---
+  // const [vkAuthStatus, setVkAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  // const [vkAuthMessage, setVkAuthMessage] = useState('');
   const [amocrmStatus, setAmocrmStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [amocrmMessage, setAmocrmMessage] = useState('');
   const [amocrmContact, setAmocrmContact] = useState<any>(null);
@@ -29,47 +30,9 @@ const ProfilePage = () => {
     window.open(authUrl, '_blank', 'width=600,height=600');
   };
 
-  // --- Обработчики для VK ID ---
-  const handleVKIDSuccess = async (vkData: any) => {
-    console.log('VK ID авторизация успешна, отправка на бэкенд:', vkData);
-    setVkAuthStatus('loading');
-    setVkAuthMessage('Проверка данных...');
-
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/oauth/vk/verify-auth`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          vkData: vkData,
-          telegramId: userData.telegramId,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Ошибка проверки на сервере');
-      }
-
-      setVkAuthStatus('success');
-      setVkAuthMessage('Аккаунт VK успешно привязан!');
-      console.log('Бэкенд успешно обработал данные:', result);
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      console.error('Ошибка при отправке данных на бэкенд:', errorMessage);
-      setVkAuthStatus('error');
-      setVkAuthMessage(`Ошибка: ${errorMessage}`);
-    }
-  };
-
-  const handleVKIDError = (error: string) => {
-    console.error('VK ID ошибка:', error);
-    setVkAuthStatus('error');
-    setVkAuthMessage(`Ошибка: ${error}`);
-  };
+  // --- УДАЛЕНО: Обработчики для VK ID SDK больше не нужны, так как авторизация серверная ---
+  // const handleVKIDSuccess = async (vkData: any) => { ... };
+  // const handleVKIDError = (error: string) => { ... };
 
   // --- Обработчики для AmoCRM ---
   const handleTestAmoCRM = async () => {
@@ -160,28 +123,10 @@ const ProfilePage = () => {
       {/* VK ID авторизация */}
       <div style={{ marginBottom: '20px' }}>
         <h4>VK ID</h4>
-        {vkAuthStatus === 'loading' && (
-          <div style={{ color: 'blue', marginBottom: '10px' }}>
-            {vkAuthMessage}
-          </div>
-        )}
-        {vkAuthStatus === 'success' && (
-          <div style={{ color: 'green', marginBottom: '10px' }}>
-            ✅ {vkAuthMessage}
-          </div>
-        )}
-        {vkAuthStatus === 'error' && (
-          <div style={{ color: 'red', marginBottom: '10px' }}>
-            ❌ {vkAuthMessage}
-          </div>
-        )}
-        {vkAuthStatus !== 'success' && (
-          <VKIDAuth
-            onSuccess={handleVKIDSuccess}
-            onError={handleVKIDError}
-            telegramId={Number(userData.telegramId) || 0}
-          />
-        )}
+        {/* --- УДАЛЕНО: Отображение статусов VK ID SDK --- */}
+        <VKIDAuth
+          telegramId={Number(userData.telegramId) || 0}
+        />
       </div>
 
       <hr/>
