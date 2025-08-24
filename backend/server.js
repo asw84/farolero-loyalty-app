@@ -27,8 +27,6 @@ const amocrmRoutes = require('./routes/amocrm.routes');
 const vkRoutes = require('./routes/vk.routes');
 const instagramRoutes = require('./routes/instagram.routes');
 const vkOAuthRoutes = require('./routes/vk_oauth_routes');
-const vkConfigRoutes = require('./routes/vk_config_routes');
-const vkConfigOnlyRoutes = require('./routes/vk_config_only_routes');
 const vkTestRoutes = require('./routes/vk_test_routes');
 const activityRoutes = require('./routes/activity.routes');
 const referralRoutes = require('./routes/referral.routes');
@@ -183,10 +181,17 @@ app.use('/api', socialRoutes);
 app.use('/api/amocrm', amocrmRoutes);
 console.log('Registering VK OAuth routes...');
 app.use('/api/oauth/vk', vkOAuthRoutes);
-console.log('Registering VK config routes...');
-app.use('/api/vk/config', vkConfigRoutes);
-console.log('Registering VK config only routes...');
-app.use('/api/vk', vkConfigOnlyRoutes);
+// --- УДАЛЕНО: Неправильная регистрация роутов ---
+// console.log('Registering VK config routes...');
+// app.use('/api/vk/config', vkConfigRoutes);
+// console.log('Registering VK config only routes...');
+// app.use('/api/vk', vkConfigOnlyRoutes);
+
+// --- НОВЫЙ ПРАВИЛЬНЫЙ РОУТ ДЛЯ КОНФИГУРАЦИИ VK ---
+const vkOAuthController = require('./controllers/vk/oauth_controller');
+app.get('/api/vk/config', vkOAuthController.getVKClientConfig);
+console.log('✅ Registered GET /api/vk/config');
+
 console.log('Registering VK test routes...');
 app.use('/api/vk/test', vkTestRoutes);
 console.log('Registering VK routes...');
