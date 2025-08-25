@@ -4,7 +4,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = process.env.DATABASE_PATH || './farolero.db';
+const dbPath = '/app/farolero.db'; // Фиксированный путь в контейнере
 
 console.log('🔧 Добавление VK полей в таблицу users...');
 console.log('📍 Путь к БД:', dbPath);
