@@ -49,7 +49,7 @@ const VKIDAuth: React.FC<VKIDAuthProps> = ({ telegramId, onSuccess, onError }) =
     try {
       VKID.Config.init({
         app: 54020829,
-        redirectUrl: 'https://api.5425685-au70735.twc1.net/api/oauth/vk/callback',
+        redirectUrl: 'https://app.5425685-au70735.twc1.net/auth/vk/callback.html',
         responseMode: VKID.ConfigResponseMode.Callback,
         source: VKID.ConfigSource.LOWCODE,
         scope: '', // Базовые права доступа
