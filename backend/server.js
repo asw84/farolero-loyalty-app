@@ -35,7 +35,7 @@ const statusRoutes = require('./routes/status.routes');
 const achievementsRoutes = require('./routes/achievements.routes');
 const dailyTasksRoutes = require('./routes/daily-tasks.routes');
 const activityCalendarRoutes = require('./routes/activity-calendar.routes');
-const oauthRouter = require('./routes/oauth');
+// OAuth router удален - используем VK ID SDK
 const socialRouter = require('./routes/social');
 const authRouter = require('./routes/auth');
 
@@ -209,8 +209,7 @@ app.use('/api/activity-calendar', activityCalendarRoutes);
 app.use('/api/qtickets/cashback', require('./routes/qtickets-cashback.routes'));
 app.use('/api/purchases', require('./routes/purchase-history.routes'));
 app.use('/health', healthRoutes);
-app.use('/api/oauth', oauthRouter);
-app.use('/oauth', oauthRouter); // Добавляем без префикса /api для удобства
+// OAuth routes удалены - VK авторизация через VK ID SDK
 app.use('/api/social', socialRouter);
 app.use('/auth', authRouter);
 
