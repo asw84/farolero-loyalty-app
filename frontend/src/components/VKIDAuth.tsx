@@ -69,8 +69,23 @@ const VKIDAuth: React.FC<VKIDAuthProps> = ({ telegramId, onSuccess, onError }) =
 
         setIsLoading(true);
 
+        // Используем встроенный SDK метод для обмена кода на токен
         VKID.Auth.exchangeCode(code, deviceId)
-          .then(vkidOnSuccess)
+          .then(async (tokenResult: any) => {
+            console.log('VK Token Exchange Success:', tokenResult);
+            
+            // Получаем данные пользователя через SDK
+            const userInfo = await VKID.Auth.userInfo(tokenResult.access_token);
+            console.log('VK User Info:', userInfo);
+            
+            // Отправляем готовые данные на backend
+            vkidOnSuccess({
+              access_token: tokenResult.access_token,
+              user_id: tokenResult.user_id,
+              email: userInfo.user?.email || '',
+              user_info: userInfo.user
+            });
+          })
           .catch(vkidOnError);
       });
 
