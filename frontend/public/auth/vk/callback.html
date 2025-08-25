@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>VK Авторизация</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container { 
+            max-width: 400px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>✅ Авторизация VK</h2>
+        <p id="status">Обрабатываем данные...</p>
+        <p><small>Окно закроется автоматически</small></p>
+    </div>
+    
+    <script>
+        console.log('VK Callback на frontend получен');
+        
+        // Получаем параметры от VK
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const device_id = urlParams.get('device_id');
+        const state = urlParams.get('state');
+        const expires_in = urlParams.get('expires_in');
+        
+        console.log('VK Callback данные:', { code: code?.substring(0, 20), device_id, state, expires_in });
+        
+        if (code) {
+            document.getElementById('status').textContent = 'Получен код авторизации, обрабатываем...';
+            
+            // Получаем telegram_id из localStorage или другого источника
+            let telegramId = localStorage.getItem('telegram_id') || '5059160861'; // fallback для тестирования
+            
+            // Отправляем данные на backend API
+            fetch('https://api.5425685-au70735.twc1.net/api/vk/link', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    access_token: 'temp_token', // VK ID SDK обменяет код на токен автоматически
+                    user_id: 'temp_id',
+                    telegram_id: telegramId,
+                    vk_code: code,
+                    device_id: device_id,
+                    state: state
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Backend ответ:', data);
+                
+                if (data.success) {
+                    document.getElementById('status').innerHTML = '✅ VK аккаунт успешно привязан!';
+                    
+                    // Сообщаем родительскому окну об успехе
+                    if (window.opener) {
+                        window.opener.postMessage({
+                            type: 'vk_auth_success',
+                            data: data
+                        }, '*');
+                    }
+                    
+                    // Закрываем окно через 2 секунды
+                    setTimeout(() => {
+                        window.close();
+                    }, 2000);
+                } else {
+                    document.getElementById('status').innerHTML = '❌ Ошибка: ' + (data.error || 'Неизвестная ошибка');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка запроса к API:', error);
+                document.getElementById('status').innerHTML = '❌ Ошибка подключения к серверу';
+            });
+        } else {
+            document.getElementById('status').innerHTML = '❌ Не получен код авторизации от VK';
+            console.error('Отсутствует код авторизации в URL');
+        }
+    </script>
+</body>
+</html>
