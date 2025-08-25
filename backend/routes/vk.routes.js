@@ -1,17 +1,18 @@
 // backend/routes/vk.routes.js
-
 const express = require('express');
 const router = express.Router();
 const vkController = require('../controllers/vk.controller');
 
-// Логирование всех запросов к VK роутам
+// Логирование всех VK запросов
 router.use((req, res, next) => {
-    console.log('[VK_ROUTES] HIT:', req.method, req.originalUrl);
+    console.log(`[VK_ROUTES] ${req.method} ${req.originalUrl}`);
     next();
 });
 
-// VK будет отправлять все события на один и тот же эндпоинт
-// POST /api/webhooks/vk -> /
-router.post('/vk', vkController.handleVkCallback);
+// Привязка VK аккаунта через VK ID SDK
+router.post('/link', vkController.linkVKAccount);
+
+// Статус привязки VK аккаунта
+router.get('/status', vkController.getVKStatus);
 
 module.exports = router;

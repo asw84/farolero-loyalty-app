@@ -26,8 +26,7 @@ const socialRoutes = require('./routes/social.routes');
 const amocrmRoutes = require('./routes/amocrm.routes');
 const vkRoutes = require('./routes/vk.routes');
 const instagramRoutes = require('./routes/instagram.routes');
-const vkOAuthRoutes = require('./routes/vk_oauth_routes');
-const vkTestRoutes = require('./routes/vk_test_routes');
+// VK OAuth routes удалены - используем VK ID SDK
 const activityRoutes = require('./routes/activity.routes');
 const referralRoutes = require('./routes/referral.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
@@ -187,19 +186,15 @@ app.use('/api/amocrm', amocrmRoutes);
 // console.log('Registering VK config only routes...');
 // app.use('/api/vk', vkConfigOnlyRoutes);
 
-// --- НОВЫЙ ПРАВИЛЬНЫЙ РОУТ ДЛЯ КОНФИГУРАЦИИ VK ---
-const vkOAuthController = require('./controllers/vk/oauth_controller');
-app.get('/api/vk/config', vkOAuthController.getVKClientConfig);
-console.log('✅ Registered GET /api/vk/config');
+// VK configuration через новый контроллер
+// Конфигурация теперь в VK ID SDK
 
-console.log('Registering VK test routes...');
-app.use('/api/vk/test', vkTestRoutes);
 console.log('Registering VK routes...');
-app.use('/api/webhooks', vkRoutes);
+app.use('/api/vk', vkRoutes);
 
 // Добавляем прямой маршрут для VK Callback API без префикса /api
-// Это необходимо для подтверждения адреса сервера VK
-app.use('/webhooks', vkRoutes);
+// VK webhooks (если нужны для отслеживания активности)
+// app.use('/webhooks/vk', vkRoutes);
 console.log('Registering Instagram routes...');
 app.use('/api', instagramRoutes);
 console.log('Registering Instagram activity routes...');
@@ -219,12 +214,7 @@ app.use('/oauth', oauthRouter); // Добавляем без префикса /a
 app.use('/api/social', socialRouter);
 app.use('/auth', authRouter);
 
-// Добавляем маршруты для авторизации через ВК
-// app.use('/auth', vkOAuthRoutes); // УДАЛЕНО: Дублирующая регистрация
-
-// --- ВРЕМЕННО ОТКЛЮЧАЕМ НОВЫЙ РОУТ ДЛЯ ОТЛАДКИ ---
-// app.use('/auth/vk', vkOAuthRoutes);
-// console.log('✅ Registered VK OAuth routes at /auth/vk');
+// VK авторизация теперь через VK ID SDK
 
 // --- ВРЕМЕННЫЙ РЕДИРЕКТ ДЛЯ ОТЛАДКИ ---
 app.get('/auth/vk/login', (req, res) => {
