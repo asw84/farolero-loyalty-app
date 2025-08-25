@@ -140,10 +140,13 @@ const handleVKLogin = async (req, res) => {
         const codeChallenge = generateCodeChallenge(codeVerifier);
 
         const statePayload = {
-            tg_user_id: tg_user_id,
-            code_verifier: codeVerifier // Сохраняем verifier в state
+            u: tg_user_id,           // Сокращаем ключи
+            v: codeVerifier          // u = user, v = verifier  
         };
-        const state = jwt.sign(statePayload, process.env.JWT_SECRET, { expiresIn: '10m' });
+        const state = jwt.sign(statePayload, process.env.JWT_SECRET, { expiresIn: '5m' }); // Сокращаем срок
+        
+        // Заменяем точки на тильды для безопасной передачи через URL
+        const safeState = state.replace(/\./g, '~');
 
         const clientId = process.env.VK_CLIENT_ID;
         const redirectUri = process.env.VK_REDIRECT_URI;
@@ -152,7 +155,7 @@ const handleVKLogin = async (req, res) => {
         authUrl.searchParams.append('client_id', clientId);
         authUrl.searchParams.append('redirect_uri', redirectUri);
         authUrl.searchParams.append('response_type', 'code');
-        authUrl.searchParams.append('state', encodeURIComponent(state)); // URL encode JWT state
+        authUrl.searchParams.append('state', encodeURIComponent(safeState)); // URL encode safe state
         authUrl.searchParams.append('scope', 'email');
         authUrl.searchParams.append('code_challenge', codeChallenge);
         authUrl.searchParams.append('code_challenge_method', 'S256');
@@ -174,9 +177,6 @@ const handleVKLogin = async (req, res) => {
 const handleCallback = async (req, res) => {
     try {
         const { code, state } = req.query;
-        console.log('DEBUG: VK callback received');
-        console.log('DEBUG: Raw state from VK:', state);
-        console.log('DEBUG: State length:', state?.length);
 
         if (!code || !state) {
             return res.status(400).send(htmlTemplateService.generateErrorPage('Отсутствуют параметры code или state'));
@@ -184,14 +184,14 @@ const handleCallback = async (req, res) => {
 
         try {
             // URL decode JWT state перед верификацией
-            console.log('DEBUG: Attempting to URL decode and verify JWT state');
             const decodedState = decodeURIComponent(state);
-            console.log('DEBUG: Decoded state:', decodedState);
             
-            const statePayload = jwt.verify(decodedState, process.env.JWT_SECRET);
-            console.log('DEBUG: JWT decoded successfully:', statePayload);
+            // Возвращаем тильды обратно в точки
+            const restoredState = decodedState.replace(/~/g, '.');
             
-            const { tg_user_id, code_verifier } = statePayload;
+            const statePayload = jwt.verify(restoredState, process.env.JWT_SECRET);
+            
+            const { u: tg_user_id, v: code_verifier } = statePayload;
 
             if (!tg_user_id || !code_verifier) {
                 return res.status(400).send(htmlTemplateService.generateErrorPage('Некорректный параметр state'));

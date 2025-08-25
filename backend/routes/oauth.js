@@ -7,21 +7,18 @@ const router = express.Router();
 
 router.get('/vk/callback', async (req, res) => {
   const { code, state } = req.query;
-  console.log('DEBUG: VK callback received');
-  console.log('DEBUG: Raw state from VK:', state);
-  console.log('DEBUG: State length:', state?.length);
   
   if (!code || !state) return res.status(400).json({ error: 'missing_code_or_state' });
 
   try {
     // Validate JWT state and extract code_verifier
-    console.log('DEBUG: Attempting to URL decode and verify JWT state');
     const decodedState = decodeURIComponent(state);
-    console.log('DEBUG: Decoded state:', decodedState);
-    console.log('DEBUG: Decoded state length:', decodedState?.length);
-    const decoded = jwt.verify(decodedState, process.env.JWT_SECRET);
-    console.log('DEBUG: JWT decoded successfully:', decoded);
-    const { tg_user_id, code_verifier } = decoded;
+    
+    // Возвращаем тильды обратно в точки
+    const restoredState = decodedState.replace(/~/g, '.');
+    
+    const decoded = jwt.verify(restoredState, process.env.JWT_SECRET);
+    const { u: tg_user_id, v: code_verifier } = decoded;
     if (!tg_user_id || !code_verifier) return res.status(400).json({ error: 'invalid_state' });
 
     // Обменяем код на токен с новым VK ID API (POST запрос)
@@ -66,18 +63,20 @@ router.get('/vk/login', async (req, res) => {
     const code_verifier = generateCodeVerifier();
     const code_challenge = generateCodeChallenge(code_verifier);
     
-    // Создаем JWT токен для state с code_verifier
+    // Создаем JWT токен для state с code_verifier (сокращенные ключи)
     const state = jwt.sign({ 
-      tg_user_id, 
-      code_verifier 
-    }, process.env.JWT_SECRET, { expiresIn: '10m' });
+      u: tg_user_id,     // u = user
+      v: code_verifier   // v = verifier
+    }, process.env.JWT_SECRET, { expiresIn: '5m' });
     
     // Формируем URL для авторизации VK ID (новый API)
     const authUrl = new URL('https://id.vk.com/authorize');
     authUrl.searchParams.set('client_id', process.env.VK_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', process.env.VK_REDIRECT_URI);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('state', encodeURIComponent(state));
+    // Заменяем точки на тильды для безопасной передачи через URL
+    const safeState = state.replace(/\./g, '~');
+    authUrl.searchParams.set('state', encodeURIComponent(safeState));
     authUrl.searchParams.set('scope', 'offline');
     authUrl.searchParams.set('code_challenge', code_challenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');

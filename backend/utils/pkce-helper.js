@@ -5,7 +5,7 @@ const crypto = require('crypto');
  * @param {number} length The length of the string to generate.
  * @returns {string} The generated code verifier.
  */
-function generateCodeVerifier(length = 128) {
+function generateCodeVerifier(length = 43) {  // Минимальная длина по PKCE спецификации
     // Генерируем достаточно байт для получения нужной длины после base64url кодирования
     const bytes = crypto.randomBytes(Math.ceil(length * 3 / 4));
     return bytes
