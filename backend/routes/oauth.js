@@ -11,8 +11,15 @@ router.get('/vk/callback', async (req, res) => {
   if (!code || !state) return res.status(400).json({ error: 'missing_code_or_state' });
 
   try {
+    console.log('DEBUG: VK callback received');
+    console.log('DEBUG: Raw state from VK:', state);
+    console.log('DEBUG: State length:', state.length);
+    
     // Validate JWT state and extract code_verifier
+    console.log('DEBUG: Attempting to URL decode and verify JWT state');
     const decodedState = decodeURIComponent(state);
+    console.log('DEBUG: Decoded state:', decodedState);
+    console.log('DEBUG: Decoded state length:', decodedState.length);
     
     // Возвращаем тильды обратно в точки
     const restoredState = decodedState.replace(/~/g, '.');
@@ -63,7 +70,7 @@ router.get('/vk/login', async (req, res) => {
     const code_verifier = generateCodeVerifier();
     const code_challenge = generateCodeChallenge(code_verifier);
     
-    // Создаем JWT токен для state с code_verifier (сокращенные ключи)
+    // Создаем JWT токен для state с code_verifier (сокращенные ключи) 
     const state = jwt.sign({ 
       u: tg_user_id,     // u = user
       v: code_verifier   // v = verifier
