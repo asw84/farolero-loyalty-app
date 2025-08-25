@@ -18,6 +18,7 @@ router.get('/vk/callback', async (req, res) => {
     console.log('DEBUG: Attempting to URL decode and verify JWT state');
     const decodedState = decodeURIComponent(state);
     console.log('DEBUG: Decoded state:', decodedState);
+    console.log('DEBUG: Decoded state length:', decodedState?.length);
     const decoded = jwt.verify(decodedState, process.env.JWT_SECRET);
     console.log('DEBUG: JWT decoded successfully:', decoded);
     const { tg_user_id, code_verifier } = decoded;
