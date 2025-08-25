@@ -222,9 +222,16 @@ app.use('/auth', authRouter);
 // Добавляем маршруты для авторизации через ВК
 // app.use('/auth', vkOAuthRoutes); // УДАЛЕНО: Дублирующая регистрация
 
-// --- НОВАЯ ЕДИНАЯ РЕГИСТРАЦИЯ VK OAUTH ---
-app.use('/auth/vk', vkOAuthRoutes);
-console.log('✅ Registered VK OAuth routes at /auth/vk');
+// --- ВРЕМЕННО ОТКЛЮЧАЕМ НОВЫЙ РОУТ ДЛЯ ОТЛАДКИ ---
+// app.use('/auth/vk', vkOAuthRoutes);
+// console.log('✅ Registered VK OAuth routes at /auth/vk');
+
+// --- ВРЕМЕННЫЙ РЕДИРЕКТ ДЛЯ ОТЛАДКИ ---
+app.get('/auth/vk/login', (req, res) => {
+    console.log('[TEMP REDIRECT] /auth/vk/login -> /api/oauth/vk/login');
+    const newUrl = `/api/oauth/vk/login?${req.url.split('?')[1] || ''}`;
+    res.redirect(newUrl);
+});
 
 
 // --- УНИВЕРСАЛЬНЫЙ ОБРАБОТЧИК ДЛЯ ОТЛАДКИ ---

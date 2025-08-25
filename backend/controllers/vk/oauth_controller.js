@@ -145,8 +145,8 @@ const handleVKLogin = async (req, res) => {
         };
         const state = jwt.sign(statePayload, process.env.JWT_SECRET, { expiresIn: '5m' }); // Сокращаем срок
         
-        // Заменяем точки на тильды для безопасной передачи через URL
-        const safeState = state.replace(/\./g, '~');
+        // Кодируем весь JWT в base64 для безопасной передачи через URL
+        const safeState = Buffer.from(state).toString('base64');
 
         const clientId = process.env.VK_CLIENT_ID;
         const redirectUri = process.env.VK_REDIRECT_URI;
@@ -186,8 +186,8 @@ const handleCallback = async (req, res) => {
             // URL decode JWT state перед верификацией
             const decodedState = decodeURIComponent(state);
             
-            // Возвращаем тильды обратно в точки
-            const restoredState = decodedState.replace(/~/g, '.');
+            // Декодируем из base64 обратно в JWT
+            const restoredState = Buffer.from(decodedState, 'base64').toString('utf8');
             
             const statePayload = jwt.verify(restoredState, process.env.JWT_SECRET);
             

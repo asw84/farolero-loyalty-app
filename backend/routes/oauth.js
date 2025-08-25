@@ -5,6 +5,14 @@ const amocrmClient = require('../amocrm/apiClient');
 const { generateCodeVerifier, generateCodeChallenge } = require('../utils/pkce-helper');
 const router = express.Router();
 
+// DEBUG: Логирование всех запросов к /api/oauth
+router.use((req, res, next) => {
+    console.log(`[OAUTH_ROUTER] HIT: ${req.method} ${req.originalUrl}`);
+    console.log(`[OAUTH_ROUTER] Path: ${req.path}`);
+    console.log(`[OAUTH_ROUTER] Query:`, req.query);
+    next();
+});
+
 router.get('/vk/callback', async (req, res) => {
   const { code, state } = req.query;
   
@@ -21,8 +29,9 @@ router.get('/vk/callback', async (req, res) => {
     console.log('DEBUG: Decoded state:', decodedState);
     console.log('DEBUG: Decoded state length:', decodedState.length);
     
-    // Возвращаем тильды обратно в точки
-    const restoredState = decodedState.replace(/~/g, '.');
+    // Декодируем из base64 обратно в JWT
+    const restoredState = Buffer.from(decodedState, 'base64').toString('utf8');
+    console.log('DEBUG: Restored JWT state:', restoredState);
     
     const decoded = jwt.verify(restoredState, process.env.JWT_SECRET);
     const { u: tg_user_id, v: code_verifier } = decoded;
@@ -81,8 +90,8 @@ router.get('/vk/login', async (req, res) => {
     authUrl.searchParams.set('client_id', process.env.VK_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', process.env.VK_REDIRECT_URI);
     authUrl.searchParams.set('response_type', 'code');
-    // Заменяем точки на тильды для безопасной передачи через URL
-    const safeState = state.replace(/\./g, '~');
+    // Кодируем весь JWT в base64 для безопасной передачи через URL
+    const safeState = Buffer.from(state).toString('base64');
     authUrl.searchParams.set('state', encodeURIComponent(safeState));
     authUrl.searchParams.set('scope', 'offline');
     authUrl.searchParams.set('code_challenge', code_challenge);
