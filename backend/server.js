@@ -209,7 +209,9 @@ app.use('/api/activity-calendar', activityCalendarRoutes);
 app.use('/api/qtickets/cashback', require('./routes/qtickets-cashback.routes'));
 app.use('/api/purchases', require('./routes/purchase-history.routes'));
 app.use('/health', healthRoutes);
-// OAuth routes удалены - VK авторизация через VK ID SDK
+// VK ID SDK callback route
+const vkCallbackRoutes = require('./routes/vk-callback.routes');
+app.use('/api/oauth', vkCallbackRoutes);
 app.use('/api/social', socialRouter);
 app.use('/auth', authRouter);
 
