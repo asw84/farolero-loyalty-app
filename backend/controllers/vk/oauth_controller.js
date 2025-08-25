@@ -3,6 +3,7 @@ const vkOAuthService = require('../../services/vk_oauth_service');
 const userService = require('../../services/user.service'); // Импортируем userService
 const htmlTemplateService = require('../../services/html.template.service');
 const { generateCodeVerifier, generateCodeChallenge } = require('../../utils/pkce-helper');
+const jwt = require('jsonwebtoken');
 
 /**
  * Получает конфигурацию VK для frontend
@@ -142,7 +143,7 @@ const handleVKLogin = async (req, res) => {
             tg_user_id: tg_user_id,
             code_verifier: codeVerifier // Сохраняем verifier в state
         };
-        const state = Buffer.from(JSON.stringify(statePayload)).toString('base64');
+        const state = jwt.sign(statePayload, process.env.JWT_SECRET, { expiresIn: '10m' });
         
         const clientId = process.env.VK_CLIENT_ID;
         const redirectUri = process.env.VK_REDIRECT_URI;
@@ -178,7 +179,7 @@ const handleCallback = async (req, res) => {
             return res.status(400).send(htmlTemplateService.generateErrorPage('Отсутствуют параметры code или state'));
         }
 
-        const statePayload = JSON.parse(Buffer.from(state, 'base64').toString());
+        const statePayload = jwt.verify(state, process.env.JWT_SECRET);
         const { tg_user_id, code_verifier } = statePayload;
 
         if (!tg_user_id || !code_verifier) {
