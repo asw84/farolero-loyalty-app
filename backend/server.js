@@ -215,6 +215,7 @@ app.use('/api/qtickets/cashback', require('./routes/qtickets-cashback.routes'));
 app.use('/api/purchases', require('./routes/purchase-history.routes'));
 app.use('/health', healthRoutes);
 app.use('/api/oauth', oauthRouter);
+app.use('/oauth', oauthRouter); // Добавляем без префикса /api для удобства
 app.use('/api/social', socialRouter);
 app.use('/auth', authRouter);
 

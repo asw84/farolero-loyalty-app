@@ -6,7 +6,9 @@ const crypto = require('crypto');
  * @returns {string} The generated code verifier.
  */
 function generateCodeVerifier(length = 128) {
-    return crypto.randomBytes(length)
+    // Генерируем достаточно байт для получения нужной длины после base64url кодирования
+    const bytes = crypto.randomBytes(Math.ceil(length * 3 / 4));
+    return bytes
         .toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')

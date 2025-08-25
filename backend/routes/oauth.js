@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const amocrmClient = require('../amocrm/apiClient');
+const { generateCodeVerifier, generateCodeChallenge } = require('../utils/pkce-helper');
 const router = express.Router();
 
 router.get('/vk/callback', async (req, res) => {
@@ -9,20 +10,27 @@ router.get('/vk/callback', async (req, res) => {
   if (!code || !state) return res.status(400).json({ error: 'missing_code_or_state' });
 
   try {
-    const params = new URLSearchParams({
-      client_id: process.env.VK_CLIENT_ID,
-      client_secret: process.env.VK_CLIENT_SECRET,
-      redirect_uri: process.env.VK_REDIRECT_URI,
-      code
-    });
-
-    const { data } = await axios.get(`https://oauth.vk.com/access_token?${params.toString()}`);
-    const { user_id } = data;
-
-    // Validate JWT state
+    // Validate JWT state and extract code_verifier
     const decoded = jwt.verify(state, process.env.JWT_SECRET);
-    const tg_user_id = decoded?.tg_user_id;
-    if (!tg_user_id) return res.status(400).json({ error: 'invalid_state' });
+    const { tg_user_id, code_verifier } = decoded;
+    if (!tg_user_id || !code_verifier) return res.status(400).json({ error: 'invalid_state' });
+
+    // Обменяем код на токен с новым VK ID API (POST запрос)
+    const tokenParams = {
+      client_id: process.env.VK_CLIENT_ID,
+      code: code,
+      code_verifier: code_verifier,
+      redirect_uri: process.env.VK_REDIRECT_URI,
+      device_id: `webapp_${Date.now()}` // Генерируем device_id
+    };
+
+    const { data } = await axios.post('https://id.vk.com/oauth2/auth', tokenParams, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    const { user_id } = data;
 
     // Find contact in AmoCRM and link VK ID
     const contact = await amocrmClient.findContactByTelegramId(tg_user_id);
@@ -39,21 +47,33 @@ router.get('/vk/callback', async (req, res) => {
 // Добавляем роут для VK OAuth login
 router.get('/vk/login', async (req, res) => {
   const { tg_user_id } = req.query;
-  if (!tg_user_id) return res.status(400).json({ error: 'missing_tg_user_id' });
+  
+  if (!tg_user_id) {
+    return res.status(400).json({ error: 'missing_tg_user_id' });
+  }
 
   try {
-    // Создаем JWT токен для state
-    const state = jwt.sign({ tg_user_id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    // Генерируем PKCE параметры
+    const code_verifier = generateCodeVerifier();
+    const code_challenge = generateCodeChallenge(code_verifier);
     
-    // Формируем URL для авторизации VK
-    const authUrl = new URL('https://oauth.vk.com/authorize');
+    // Создаем JWT токен для state с code_verifier
+    const state = jwt.sign({ 
+      tg_user_id, 
+      code_verifier 
+    }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    
+    // Формируем URL для авторизации VK ID (новый API)
+    const authUrl = new URL('https://id.vk.com/authorize');
     authUrl.searchParams.set('client_id', process.env.VK_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', process.env.VK_REDIRECT_URI);
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('scope', 'offline');
+    authUrl.searchParams.set('code_challenge', code_challenge);
+    authUrl.searchParams.set('code_challenge_method', 'S256');
     
-    // Перенаправляем на страницу авторизации VK
+    // Перенаправляем на страницу авторизации VK ID
     return res.redirect(authUrl.toString());
   } catch (err) {
     console.error('VK OAuth login error:', err.message);

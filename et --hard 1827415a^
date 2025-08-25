@@ -1,0 +1,29 @@
+2777ccd4 - asw84, 3 minutes ago : fix(frontend): resolve final build errors and add ready checks
+931e79ee - asw84, 7 minutes ago : fix(telegram): implement reactive hook for robust ID detection
+fc373cc6 - asw84, 12 minutes ago : fix(typescript): remove non-existent WebAppUser property
+04d97470 - asw84, 18 minutes ago : fix(telegram): robust user ID detection with multiple fallbacks
+e39276ad - asw84, 26 minutes ago : fix(telegram): add safe Telegram WebApp initialization and remove hardcoded ID
+0425cf5b - asw84, 50 minutes ago : feat(frontend): add missing VKIDAuth.css file
+c4e564d6 - asw84, 54 minutes ago : fix(frontend): remove non-existent fetchUserActivityHistory import
+1827415a - asw84, 56 minutes ago : fix(frontend): resolve remaining TypeScript errors in TasksPage and AchievementsPage
+9da4f42d - asw84, 61 minutes ago : fix(frontend): resolve all TypeScript build errors and type mismatches
+e052feff - asw84, 65 minutes ago : fix(frontend): resolve build errors and type mismatches
+c8554a6a - asw84, 85 minutes ago : fix(vk): add client_secret to token exchange
+650eeef2 - asw84, 18 hours ago : fix(frontend): resolve build errors after auth refactor
+3e830e88 - asw84, 18 hours ago : refactor(auth): unify all oauth routes into oauth.js
+bcdc9ba0 - asw84, 18 hours ago : fix(vk): implement correct token exchange flow
+c15aeacb - asw84, 19 hours ago : fix(server): remove missing errorHandler module
+11a2a313 - asw84, 19 hours ago : feat(vk): implement session-based oauth flow
+b1efeca9 - asw84, 19 hours ago : refactor(vk): cleanup debug logs from oauth flow
+15c089b9 - asw84, 20 hours ago : fix(vk): final configuration and logging improvements
+463a320c - asw84, 20 hours ago : refactor(vk): improve error logging in oauth controller and service
+9ab46dab - asw84, 21 hours ago : feat(vk): add detailed logging to token exchange service
+2d024d2d - asw84, 22 hours ago : refactor(auth): унифицировать маршруты VK OAuth для стабильности
+24c84ee7 - asw84, 22 hours ago : refactor(auth): унифицировать маршруты VK OAuth для стабильности
+fbee5aea - asw84, 22 hours ago : fix(routing): устранен конфликт роутов для /auth/vk/login
+a8d2afb3 - asw84, 25 hours ago : fix(frontend): убран вызов устаревших props в ProfilePage
+4bfec667 - asw84, 25 hours ago : refactor(vk): упрощен компонент авторизации, оставлен только безопасный серверный OAuth
+8da51706 - asw84, 25 hours ago : fix(vk): исправлена маршрутизация для callback webhook
+666f6411 - asw84, 25 hours ago : fix(frontend): исправлена ссылка на OAuth авторизацию VK
+8ec43ea5 - asw84, 26 hours ago : fix(vk): исправлена маршрутизация для эндпоинта /api/vk/config
+d095c314 - asw84, 2 days ago : feat(vk): полная переработка авторизации VK ID с PKCE
