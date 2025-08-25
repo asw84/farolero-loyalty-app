@@ -125,7 +125,7 @@ const ProfilePage = () => {
         <h4>VK ID</h4>
         {/* --- УДАЛЕНО: Отображение статусов VK ID SDK --- */}
         <VKIDAuth
-          telegramId={Number(userData.telegramId) || 0}
+          telegramId={userData.telegramId || '0'}
         />
       </div>
 
