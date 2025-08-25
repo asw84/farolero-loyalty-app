@@ -14,7 +14,7 @@ const VK_CONFIG = {
     GROUP_ID: process.env.VK_GROUP_ID,
     GROUP_TOKEN: process.env.VK_GROUP_TOKEN,
     REDIRECT_URI: process.env.VK_REDIRECT_URI,
-    OAUTH_SCOPE: process.env.VK_OAUTH_SCOPE || 'offline,email,wall,groups',
+    SCOPE: 'email', // VK ID SDK использует базовые права
     CONFIRMATION_TOKEN: process.env.VK_CONFIRMATION_TOKEN,
     SECRET_KEY: process.env.VK_SECRET_KEY,
     ACCESS_TOKEN: process.env.VK_ACCESS_TOKEN,
