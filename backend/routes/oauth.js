@@ -15,8 +15,10 @@ router.get('/vk/callback', async (req, res) => {
 
   try {
     // Validate JWT state and extract code_verifier
-    console.log('DEBUG: Attempting to verify JWT state');
-    const decoded = jwt.verify(state, process.env.JWT_SECRET);
+    console.log('DEBUG: Attempting to URL decode and verify JWT state');
+    const decodedState = decodeURIComponent(state);
+    console.log('DEBUG: Decoded state:', decodedState);
+    const decoded = jwt.verify(decodedState, process.env.JWT_SECRET);
     console.log('DEBUG: JWT decoded successfully:', decoded);
     const { tg_user_id, code_verifier } = decoded;
     if (!tg_user_id || !code_verifier) return res.status(400).json({ error: 'invalid_state' });
@@ -74,7 +76,7 @@ router.get('/vk/login', async (req, res) => {
     authUrl.searchParams.set('client_id', process.env.VK_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', process.env.VK_REDIRECT_URI);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('state', encodeURIComponent(state));
     authUrl.searchParams.set('scope', 'offline');
     authUrl.searchParams.set('code_challenge', code_challenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');

@@ -17,9 +17,9 @@ const getVKClientConfig = async (req, res) => {
             redirectUri: process.env.VK_REDIRECT_URI,
             apiUrl: process.env.APP_BASE_URL || 'https://api.5425685-au70735.twc1.net'
         };
-        
+
         console.log('[VK_ID_CONTROLLER] 🔧 Config:', config);
-        
+
         if (!config.appId) {
             console.log('[VK_ID_CONTROLLER] ❌ VK_CLIENT_ID not configured');
             return res.status(500).json({
@@ -27,7 +27,7 @@ const getVKClientConfig = async (req, res) => {
                 error: 'VK_CLIENT_ID не настроен'
             });
         }
-        
+
         console.log('[VK_ID_CONTROLLER] ✅ Sending config response');
         res.json({
             success: true,
@@ -60,7 +60,7 @@ const verifyVKIDAuth = async (req, res) => {
         const result = await vkOAuthService.verifyAndLinkAccount(vkData, telegramId);
 
         console.log(`[VK_ID_CONTROLLER] ✅ Аккаунт VK ID успешно привязан для Telegram ID: ${telegramId}`);
-        
+
         res.status(200).json({ success: true, ...result });
 
     } catch (error) {
@@ -97,7 +97,7 @@ const getTemplatesConfig = async (req, res) => {
 const updateTemplatesConfig = async (req, res) => {
     try {
         const newConfig = req.body;
-        
+
         if (!newConfig || typeof newConfig !== 'object') {
             return res.status(400).json({
                 success: false,
@@ -107,7 +107,7 @@ const updateTemplatesConfig = async (req, res) => {
 
         // Обновляем конфигурацию
         htmlTemplateService.updateConfig(newConfig);
-        
+
         res.json({
             success: true,
             message: 'Конфигурация шаблонов обновлена',
@@ -144,7 +144,7 @@ const handleVKLogin = async (req, res) => {
             code_verifier: codeVerifier // Сохраняем verifier в state
         };
         const state = jwt.sign(statePayload, process.env.JWT_SECRET, { expiresIn: '10m' });
-        
+
         const clientId = process.env.VK_CLIENT_ID;
         const redirectUri = process.env.VK_REDIRECT_URI;
 
@@ -152,7 +152,7 @@ const handleVKLogin = async (req, res) => {
         authUrl.searchParams.append('client_id', clientId);
         authUrl.searchParams.append('redirect_uri', redirectUri);
         authUrl.searchParams.append('response_type', 'code');
-        authUrl.searchParams.append('state', state);
+        authUrl.searchParams.append('state', encodeURIComponent(state)); // URL encode JWT state
         authUrl.searchParams.append('scope', 'email');
         authUrl.searchParams.append('code_challenge', codeChallenge);
         authUrl.searchParams.append('code_challenge_method', 'S256');
@@ -174,38 +174,55 @@ const handleVKLogin = async (req, res) => {
 const handleCallback = async (req, res) => {
     try {
         const { code, state } = req.query;
-        
+        console.log('DEBUG: VK callback received');
+        console.log('DEBUG: Raw state from VK:', state);
+        console.log('DEBUG: State length:', state?.length);
+
         if (!code || !state) {
             return res.status(400).send(htmlTemplateService.generateErrorPage('Отсутствуют параметры code или state'));
         }
 
-        const statePayload = jwt.verify(state, process.env.JWT_SECRET);
-        const { tg_user_id, code_verifier } = statePayload;
+        try {
+            // URL decode JWT state перед верификацией
+            console.log('DEBUG: Attempting to URL decode and verify JWT state');
+            const decodedState = decodeURIComponent(state);
+            console.log('DEBUG: Decoded state:', decodedState);
+            
+            const statePayload = jwt.verify(decodedState, process.env.JWT_SECRET);
+            console.log('DEBUG: JWT decoded successfully:', statePayload);
+            
+            const { tg_user_id, code_verifier } = statePayload;
 
-        if (!tg_user_id || !code_verifier) {
-            return res.status(400).send(htmlTemplateService.generateErrorPage('Некорректный параметр state'));
+            if (!tg_user_id || !code_verifier) {
+                return res.status(400).send(htmlTemplateService.generateErrorPage('Некорректный параметр state'));
+            }
+
+            console.log(`[VK_ID_CONTROLLER] 🔐 Получен callback от VK OAuth для Telegram ID: ${tg_user_id}`);
+
+            // 1. Обмен кода на токен
+            const tokenData = await vkOAuthService.exchangeCodeForToken(code, code_verifier);
+            const { access_token, user_id: vk_user_id } = tokenData;
+
+            // 2. Получение данных пользователя VK
+            const vkUserData = await vkOAuthService.getVKUserData(access_token, vk_user_id);
+
+            // 3. Сохранение/обновление пользователя в нашей БД и AmoCRM
+            await userService.linkVkToUser(tg_user_id, vk_user_id, vkUserData);
+
+            console.log(`[VK_ID_CONTROLLER] ✅ Пользователь VK ${vkUserData.first_name} ${vkUserData.last_name} (ID: ${vkUserData.id}) успешно авторизован и привязан к Telegram ID ${tg_user_id}.`);
+
+            // Успешная авторизация
+            return htmlTemplateService.sendSuccess(res);
+            
+        } catch (jwtError) {
+            console.error('[VK_ID_CONTROLLER] ❌ JWT error:', jwtError.message);
+            return res.status(400).send(htmlTemplateService.generateErrorPage('Некорректный параметр state: ' + jwtError.message));
         }
-
-        console.log(`[VK_ID_CONTROLLER] 🔐 Получен callback от VK OAuth для Telegram ID: ${tg_user_id}`);
-
-        // 1. Обмен кода на токен
-        const tokenData = await vkOAuthService.exchangeCodeForToken(code, code_verifier);
-        const { access_token, user_id: vk_user_id } = tokenData;
-
-        // 2. Получение данных пользователя VK
-        const vkUserData = await vkOAuthService.getVKUserData(access_token, vk_user_id);
-
-        // 3. Сохранение/обновление пользователя в нашей БД и AmoCRM
-        await userService.linkVkToUser(tg_user_id, vk_user_id, vkUserData);
         
-        console.log(`[VK_ID_CONTROLLER] ✅ Пользователь VK ${vkUserData.first_name} ${vkUserData.last_name} (ID: ${vkUserData.id}) успешно авторизован и привязан к Telegram ID ${tg_user_id}.`);
-
-        // Успешная авторизация
-        return htmlTemplateService.sendSuccess(res);
-  } catch (error) {
-    console.error(`[VK_ID_CONTROLLER] ❌ Ошибка при обработке callback от VK OAuth:`, error.message);
-    return htmlTemplateService.sendError(res, 'oauth_vk_failed', 'Не удалось завершить авторизацию VK.');
-  }
+    } catch (error) {
+        console.error(`[VK_ID_CONTROLLER] ❌ Ошибка при обработке callback от VK OAuth:`, error.message);
+        return htmlTemplateService.sendError(res, 'oauth_vk_failed', 'Не удалось завершить авторизацию VK.');
+    }
 };
 
 module.exports = {
