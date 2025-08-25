@@ -7,11 +7,17 @@ const router = express.Router();
 
 router.get('/vk/callback', async (req, res) => {
   const { code, state } = req.query;
+  console.log('DEBUG: VK callback received');
+  console.log('DEBUG: Raw state from VK:', state);
+  console.log('DEBUG: State length:', state?.length);
+  
   if (!code || !state) return res.status(400).json({ error: 'missing_code_or_state' });
 
   try {
     // Validate JWT state and extract code_verifier
+    console.log('DEBUG: Attempting to verify JWT state');
     const decoded = jwt.verify(state, process.env.JWT_SECRET);
+    console.log('DEBUG: JWT decoded successfully:', decoded);
     const { tg_user_id, code_verifier } = decoded;
     if (!tg_user_id || !code_verifier) return res.status(400).json({ error: 'invalid_state' });
 
